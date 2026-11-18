@@ -526,3 +526,4 @@ fieldset.choose { margin-top: 10px; } fieldset.choose .choice { padding: 7px 11p
 .ch3-r { font: 400 12.5px/1.25 var(--sans); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 3px; margin-top: 2px; }
 .ch3.qL .ch3-r { color: var(--red-text); }
 @media (min-width: 1101px) and (max-height: 820px) { .g2-photo img { height: 118px; } .g2-bigyear { font-size: 44px; } .g2-scene, .g2-react { padding-top: 10px; } .pcard { margin-bottom: 8px; } .ch3 { padding: 5px 10px 6px; } }
+@media (min-width: 1101px) { .g2-side.reacting .g2-news, .g2-side.reacting .g2-credit { display: none; } .g2-side.reacting .g2-photo img { height: 96px; } }

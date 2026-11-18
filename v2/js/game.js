@@ -328,7 +328,7 @@
     }
     function drawYear() {
       const i = seq.length, y = YRS[i], prev = sim().rows[i - 1], ap = APP[y], [vr, vl] = VISIT[y](V());
-      phase = 'year'; tick(''); $('#skipBtn').hidden = true; $('#react').hidden = true; photo(y); race(prev);
+      phase = 'year'; tick(''); $('#skipBtn').hidden = true; $('#react').hidden = true; $('#side').classList.remove('reacting'); photo(y); race(prev);
       const closed = prev && (prev.rcash == null || prev.rcash < 0);
       $('#scene').innerHTML = `${card(vr, WHO[vr], `“${esc(vl)}”`)}
         ${card(ap.role, `${WHO.officer}: an application`, `<b>${esc(ap.who)}.</b> ${esc(ap.ask)}`)}
@@ -367,7 +367,7 @@
       else if (r.choice === 'L' && !r.back) out.push(card('officer', WHO.officer, `“We approved the ${esc(APP[r.year].who.replace(/^A /, '').toLowerCase())} and everyone else who walked in. Wall Street bought every loan.”`));
       else out.push(card('chair', WHO.chair, '“We kept pace. Same again next year.”'));
       $('#react').innerHTML = `<p class="g2-nums">${nums}</p>${out.slice(0, 3).join('')}<div class="g2-go"><button class="btn run" type="button" id="goOn">${end ? 'See how it ended' : `Go to ${r.year + 1}`}</button></div>`;
-      $('#react').hidden = false; $('#scene').innerHTML = ''; tick(end ? (end.kind === 'fired' ? `Fired in ${end.year}` : `Bankrupt in ${end.year}`) : '');
+      $('#react').hidden = false; $('#scene').innerHTML = ''; $('#side').classList.add('reacting'); $('#side').scrollTop = 0; tick(end ? (end.kind === 'fired' ? `Fired in ${end.year}` : `Bankrupt in ${end.year}`) : '');
       $('#goOn').addEventListener('click', () => (end ? drawEnd(true) : drawYear())); $('#goOn').focus({ preventScroll: true });
     }
     function drawEnd(fresh) {
