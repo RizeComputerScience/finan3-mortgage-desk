@@ -22,24 +22,26 @@ const fs = require('fs');
     const plan = await p.evaluate((c) => { const D = window.MM.D, C = window.DESK, h = window.DeskEngine.h, T = D.buildTasks(c);
       return Object.fromEntries(T.map((t) => [t.id, { good: C.selfAnswer(t, h), bad: C.selfWrong(t, h), answer: t.answer }])); }, code);
 
-    // ---- step 1: the game ----
+    // ---- step 1: the game. First the walkthrough of one loan sold, then the years: choice card, the year runs, people react ----
+    for (let k = 0; k < 4; k++) { await p.click('#wNext'); await p.waitForTimeout(k === 1 ? 700 : 250); if (k === 1) await shot('01a-walkthrough'); }
     const year = async (c, frames) => {
-      await p.click(`.dial-opt[data-c="${c}"]`); await p.click('#runBtn');
-      if (frames) { for (let k = 0; k < frames; k++) { await p.waitForTimeout(380); await p.locator('.g-stage').screenshot({ path: `${OUT}/frames/${tag}-${String(k).padStart(2, '0')}.png` }); } }
+      await p.click(`.ch3[data-c="${c}"]`);
+      if (frames) { for (let k = 0; k < frames; k++) { await p.waitForTimeout(380); await p.locator('.g2-stage').screenshot({ path: `${OUT}/frames/${tag}-${String(k).padStart(2, '0')}.png` }); } }
       else { await p.waitForTimeout(150); await p.evaluate(() => window.MM.gameApi.skip()); }
-      await p.waitForFunction(() => document.querySelector('#goOn') || (document.querySelector('#runBtn') && document.querySelector('#runBtn').disabled), null, { timeout: 15000 });
+      await p.waitForSelector('#goOn', { timeout: 15000 });
     };
+    const next = async () => { await p.click('#goOn'); await p.waitForTimeout(250); };
     await shot('01-game-2002');
-    for (let k = 0; k < 5; k++) { await year('L'); if (k === 1) await shot('02-game-2004'); }
+    for (let k = 0; k < 5; k++) { await year('L'); if (k === 1) await shot('02-game-2003-react'); await next(); if (k === 2) await shot('02b-game-2005'); }
     await shot('03-game-2007-set');
     await year('L', tag === 'desk' || tag === 'phone' ? 28 : 0);
     await shot('04-game-2007-after');
-    await p.click('#goOn'); await p.waitForTimeout(500);
+    await next(); await p.waitForTimeout(400);
     const end1 = (await p.textContent('.ending h2')).trim(); await shot('05-game-end-bust');
-    await p.click('#again'); await p.waitForTimeout(300); await year('S'); await shot('06-game-strict-warned'); await year('S'); await p.click('#goOn'); await p.waitForTimeout(400);
+    await p.click('#again'); await p.waitForTimeout(300); await year('S'); await shot('06-game-strict-warned'); await next(); await year('S'); await next(); await p.waitForTimeout(400);
     const end2 = (await p.textContent('.ending h2')).trim(); await shot('07-game-end-fired');
     const g = await p.evaluate(() => window.MM.S.log.game);
-    const gameOk = end1 === 'Bankrupt in 2007' && end2 === 'Fired in 2003' && g.done && g.value === 'SS'; log(tag, 'game', end1, '|', end2, '| saved', g.value, gameOk ? 'ok' : 'NOT OK'); if (!gameOk) fails.push(tag + ' game');
+    const gameOk = end1 === 'Bankrupt in 2007' && end2 === 'Fired in 2003' && g.done && /^\d+:SS$/.test(g.value); log(tag, 'game', end1, '|', end2, '| saved', g.value, gameOk ? 'ok' : 'NOT OK'); if (!gameOk) fails.push(tag + ' game');
     await over('game');
     await p.click('#nextBtn'); await p.waitForTimeout(300);
 
@@ -78,11 +80,14 @@ const fs = require('fs');
     await p.waitForTimeout(700); const wc = (await p.textContent('#wc')).trim(); log(tag, 'memo ->', wc); if (!/Saved/.test(wc)) fails.push(tag + ' memo'); await shot('13-memo'); await over('memo');
     await p.click('#nextBtn'); await p.waitForTimeout(300);
 
-    // ---- what one loan costs: wrong once, help, then right (the live check completes the step) ----
+    // ---- what one loan costs: wrong once, help, then right (the live check completes it); LTV once by dragging the house ----
     for (const id of ['loan', 'pay', 'first', 'total', 'lockin']) {
       const fill = async (a) => { for (let i = 0; i < a.rows.length; i++) if (a.rows[i] != null) await p.fill(`.rowin[data-row="${i}"]`, String(a.rows[i])); };
+      if (id === 'loan') { const bx = await p.locator('#houseSvg').boundingBox(); await p.mouse.move(bx.x + bx.width * 0.45, bx.y + bx.height * 0.5); await p.mouse.down(); await p.mouse.move(bx.x + bx.width * 0.5, bx.y + bx.height * 0.5, { steps: 6 }); await p.mouse.up();
+        log(tag, 'loan LTV by drag ->', await p.inputValue('.rowin[data-row="3"]')); }
+      if (id === 'pay' && await p.$('.ratebtn')) { await p.click('.ratebtn >> nth=0'); log(tag, 'pay rate-card tap ->', await p.inputValue('.rowin[data-row="2"]')); }
       await fill(plan[id].bad); if (plan[id].bad.choice) await p.check(`input[name=dec][value="${plan[id].bad.choice}"]`);
-      await p.click('#ask button[type=submit]'); await p.waitForTimeout(150);
+      await p.click('#chkBtn'); await p.waitForTimeout(150);
       log(tag, id, 'wrong ->', (await fb()).slice(0, 100));
       if (await p.$('#helpRow button[data-l="1"]')) await p.click('#helpRow button[data-l="1"]');
       if (id === 'loan') await shot('14-loan-wrong');
@@ -113,7 +118,8 @@ const fs = require('fs');
   // reduced motion: the game still plays and the 2007 moment still reads, without movement
   { const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' }); const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push('reduced ' + e));
     await p.goto(base + 'index.html'); await p.click('#goBtn'); await p.waitForTimeout(300);
-    for (let k = 0; k < 6; k++) { await p.click('.dial-opt[data-c="L"]'); await p.click('#runBtn'); await p.waitForTimeout(250); }
+    for (let k = 0; k < 4; k++) await p.click('#wNext');
+    for (let k = 0; k < 6; k++) { await p.click('.ch3[data-c="L"]'); await p.waitForSelector('#goOn'); if (k < 5) await p.click('#goOn'); await p.waitForTimeout(100); }
     const t = await p.evaluate(() => (document.querySelector('#stTick') || {}).textContent); log('reduced motion after 2007:', t); if (!/Bankrupt in 2007/.test(t)) fails.push('reduced motion 2007');
     await p.screenshot({ path: `${OUT}/reduced-2007.png` }); await ctx.close(); }
   log('errors', JSON.stringify(errs)); log(fails.length || errs.length ? 'FAIL ' + JSON.stringify(fails) : 'PASS');

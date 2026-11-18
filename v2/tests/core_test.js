@@ -192,7 +192,7 @@ chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.
   // Same step ids and kinds as v1 (so receipts carry the same information); the story runs house, machine, lender.
   ok(D.STEPS.map((s) => s.id).sort().join() === ['q1', 'loan', 'pay', 'first', 'total', 'lockin', 'chain', 'paid', 'q2', 'game', 'note'].sort().join(), 'step ids are v1\'s');
   ok(D.STEPS.map((s) => s.id).join() === 'game,chain,paid,q1,q2,note,loan,pay,first,total,lockin', 'v2 step order: the game first');
-  ok(C.app === 'finan3-w06-mortgage-desk' && C.version === 1 && C.seedVersion === 1 && C.salt === 'rize-finan3-w06-mortgage:da6f1e', 'receipt identity unchanged from v1');
+  ok(C.app === 'finan3-w06-mortgage-desk' && C.version === 2 && C.seedVersion === 1 && C.salt === 'rize-finan3-w06-mortgage:da6f1e', 'receipt identity: v1 app, seeds and salt; version 2 (the game value carries its variant)');
   // Every step has a problem statement under the word limit, with no NaN, for many codes.
   for (let i = 0; i < 200; i++) { const T = D.buildTasks('W' + i); for (const s of D.STEPS) { const P = C.PROBLEM[s.id](T.find((x) => x.id === s.id) || {}); const w = P.body.replace(/<[^>]+>/g, '').split(/\s+/).length; ok(w <= 45 && !/NaN|undefined/.test(P.place + P.body), `problem text for ${s.id} (${w} words)`); } }
   // The gestures map onto v1's answer indices: only "price tag down" and "drop on the fund" pass.
@@ -213,6 +213,27 @@ chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.
   ok(V.length === 156 && V[0] === 100 && peak > 72 && peak < 96 && Math.min(...V.slice(peak)) < V[peak] * 0.8, `price series climbs then falls more than 20% (peak index ${peak}, ${V[peak]})`);
   // The loose dial setting always shows the rival's fee (the rival is always loose), so the dilemma on screen is exact.
   ok(C.gameSim('LLLLLLL').rows.every((r, i) => r.rmade === C.PROFIT.L[i]), 'dial fees: the rival earns the loose figure every year it is open');
+
+  // Every variant of the game keeps version 1's reviewed design (proved over all 2,187 plans each).
+  ok(JSON.stringify(C.PARAMS[0].PROFIT) === JSON.stringify(C.PROFIT) && JSON.stringify(C.PARAMS[0].BACK) === JSON.stringify(C.BACK) && C.VARIANTS[0].T === 0 && !C.VARIANTS[0].late, 'variant 0 is version 1\'s game exactly');
+  const T10 = D.buildTasks('VAR').find((x) => x.id === 'game');
+  C.VARIANTS.forEach((V, vi) => {
+    const P = C.PARAMS[vi]; let fired = 0, bust = 0, bad = 0;
+    for (let i = 0; i < 5; i++) ok(P.PROFIT.L[i] > P.PROFIT.N[i] && P.PROFIT.N[i] > P.PROFIT.S[i], `variant ${vi}: loose earns most in ${C.YEARS[i]}`);
+    for (let n = 0; n < 2187; n++) {
+      let x = n, q = ''; for (let k = 0; k < 7; k++) { q += 'SNL'[x % 3]; x = Math.floor(x / 3); }
+      const g = C.gameSim(q, vi); if (!g.ending) { bad++; continue; }
+      if (g.ending.kind === 'fired') { fired++; if (!(g.ending.year <= 2006 && g.rows.slice(-2).every((r) => r.choice !== 'L'))) bad++; } else { bust++; if (!(g.ending.year >= 2007)) bad++; }
+      g.rows.filter((r) => r.year < 2007).forEach((r) => { if (!(r.rprofit > r.profit || (r.choice === 'L' && r.rprofit === r.profit))) bad++; });
+      const played = q.slice(0, g.ending.at + 1);
+      if (!C.judgeTask(T10, { value: vi + ':' + played }, h).ok) bad++;
+      if (played.length > 1 && C.judgeTask(T10, { value: vi + ':' + played.slice(0, -1) }, h).ok) bad++;
+    }
+    ok(bad === 0 && fired > 0 && bust > 0, `variant ${vi} ${JSON.stringify(V)}: no winning path, both endings (fired ${fired}, bankrupt ${bust}), step judged only when finished`);
+    const allL = C.gameSim('LLLLLLL', vi), ss = C.gameSim('SS', vi);
+    ok(allL.ending.kind === 'bust' && allL.ending.year === 2007 && allL.rivalBust === 2007 && ss.ending.kind === 'fired' && ss.ending.year === 2003, `variant ${vi}: all loose bankrupt in 2007 with the rival; strict twice fired in 2003`);
+  });
+  ok(C.judgeTask(T10, { value: 'LLLLLL' }, h).ok && !C.judgeTask(T10, { value: '99:LLLLLL' }, h).ok, 'a bare v1 sequence is variant 0; an unknown variant is rejected');
   console.log(`v2 checks passed: ${v2}`);
 }
 console.log(bad ? `FAIL ${bad}` : 'PASS');

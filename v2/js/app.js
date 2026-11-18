@@ -58,12 +58,13 @@
   const SPEAKER = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path class="w" d="M11 5.5c1 .8 1 4.2 0 5M12.8 3.8c2 1.8 2 6.6 0 8.4" stroke="currentColor" fill="none" stroke-width="1.4"/></svg>';
   function shell() {
     document.body.insertAdjacentHTML('afterbegin', `<a class="skip" href="#main">Skip to the step</a>
-      <header class="top"><div class="top-in"><div class="wordmark">${A.mark()}<span>${esc(C.story.title)}</span></div>
-        <a class="tool desmos-open" id="calcBtn" href="https://www.desmos.com/scientific" target="desmos" rel="noopener">Calculator<span class="sr-only"> (Desmos, opens in a new window)</span></a>
-        <button class="tool" id="sndBtn" type="button" aria-pressed="false">${SPEAKER}<span>Sound off</span></button></div>
-        <nav class="line" aria-label="Steps"><ol id="lineNav"></ol><p class="line-now" id="lineNow" aria-live="polite"></p></nav></header>
+      <header class="top" id="hdr"><div class="top-in"><div class="wordmark">${A.mark()}<span>${esc(C.story.title)}</span></div>
+        <nav class="line" aria-label="Steps"><ol id="lineNav"></ol><p class="line-now" id="lineNow" aria-live="polite"></p></nav>
+        <div class="tools"><a class="tool desmos-open" id="calcBtn" href="https://www.desmos.com/scientific" target="desmos" rel="noopener">Calculator<span class="sr-only"> (Desmos, opens in a new window)</span></a>
+        <button class="tool" id="sndBtn" type="button" aria-pressed="false">${SPEAKER}<span>Sound off</span></button></div></div></header>
       <main id="main" tabindex="-1"></main>
       <footer class="foot"><p>${esc(C.story.kicker)}. Your progress is saved in this browser.<span id="codeNote"></span></p></footer>`);
+    const hv = () => document.documentElement.style.setProperty('--hdr', ($('#hdr').offsetHeight || 72) + 'px'); hv(); root.addEventListener('resize', hv);
     $('#sndBtn').addEventListener('click', () => { Snd.on = !Snd.on; if (Snd.on) { Snd.ac(); Snd.good(); } else Snd.humStop(true);
       $('#sndBtn').setAttribute('aria-pressed', String(Snd.on)); $('#sndBtn span').textContent = Snd.on ? 'Sound on' : 'Sound off'; store.set(KEY + ':sound', Snd.on); });
     document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a.desmos-open'); if (!a) return;
@@ -83,7 +84,8 @@
       li.querySelector('button').addEventListener('click', () => go(s.id)); ol.appendChild(li);
     });
     const i = all.findIndex((s) => s.id === S.at);
-    nowEl.innerHTML = i < 0 ? '' : S.at === 'receipt' ? '<b>Your receipt</b>' : `Step ${i + 1} of ${D.STEPS.length}: <b>${esc(all[i].label)}</b>. Move between steps at any time; finished steps turn green.`;
+    nowEl.innerHTML = i < 0 ? '' : S.at === 'receipt' ? '<b>Your receipt</b>' : `Step ${i + 1} of ${D.STEPS.length}: <b>${esc(all[i].label)}</b>`;
+    document.documentElement.style.setProperty('--hdr', ($('#hdr').offsetHeight || 72) + 'px');
   }
   M.renderNav = renderNav;
 
@@ -115,7 +117,7 @@
     const i = stepIdx(s.id), P = C.PROBLEM[s.id](task(s.id) || {});
     main.insertAdjacentHTML('beforeend', `<section class="beat${opts.wide ? ' wide' : ''}" aria-labelledby="bt">
       <div class="work-head"><p class="kicker">Step ${i + 1} of ${D.STEPS.length}</p><h2 id="bt">${esc(s.label)}</h2>
-        ${P.place ? `<p class="place">${esc(P.place)}</p>` : ''}${P.body ? `<p class="ask">${P.body}</p>` : ''}</div>
+        ${opts.person ? '' : `${P.place ? `<p class="place">${esc(P.place)}</p>` : ''}${P.body ? `<p class="ask">${P.body}</p>` : ''}`}</div>
       <div class="stage" id="stage"><div class="stage-in" id="stageIn"></div></div>
       <div class="work" id="work"><div id="workIn"></div></div></section>`);
     return { stage: $('#stageIn'), work: $('#workIn') };
@@ -126,74 +128,12 @@
   function showFb(el, kind, html) { el.className = 'fb show ' + kind; el.innerHTML = html; }
   Object.assign(M, { nextRow, wireNext, showFb });
 
-  // ---------------- the loan sheet: worked example and the student's version, same layout (rule 29) ----------------
-  const show = (l) => (l.kind === 'text' ? l.num : F.SHOW[l.kind](l.num));
-  const PH = { money: '$0', pct: '0%', num: '0.0' };
-  function sheetHtml(lines, o) {
-    o = o || {};
-    return `<div class="sheet${o.example ? ' example' : ''}"${o.example ? ' aria-label="Worked example"' : ''}><div class="sheet-head"><span>${esc(o.title)} <span class="who">${esc(o.who || '')}</span></span><span class="tag">${o.example ? 'Worked example' : 'Your turn'}</span></div>
-      ${lines.map((l, i) => {
-        const filled = o.example || !l.input;
-        const res = filled ? `<span>${esc(show(l))}</span>` : `<label class="sr-only" for="r${i}">${esc(l.label)}</label><input id="r${i}" class="rowin" data-row="${i}" inputmode="decimal" autocomplete="off" placeholder="${PH[l.kind] || ''}" value="${o.rows && o.rows[i] != null ? esc(o.rows[i]) : ''}"><span class="mark" id="mk${i}" aria-hidden="true"></span>`;
-        return `<div class="row${filled ? ' given' : ''}"><div class="lbl">${esc(l.label)}</div><div class="calc">${l.calc}</div><div class="res">${res}</div></div>`;
-      }).join('')}</div>`;
-  }
-  const rateCard = (hi) => `<div class="ratecard"><h3>Rate card</h3><table><caption>Monthly payment for each $100,000 borrowed, 30-year fixed loan</caption>
-    <thead><tr><th scope="col">Rate</th><th scope="col">Payment per $100,000</th></tr></thead><tbody>${C.RATES.map((r) => `<tr${hi && hi.includes(r) ? ' class="hl"' : ''}><td>${pc(r)}</td><td>${mm(C.TABLE[r])}</td></tr>`).join('')}</tbody></table></div>`;
-  M.rateCard = rateCard;
-
-  // A calculation step on the sheet: check, row marks, diagnoses, the help ladder (rules 2 to 4), then praise and next.
-  function calcStep(s, work, o) {
-    const t = task(s.id), L = S.log[s.id], E = C.EXAMPLES[s.id], lines = C.linesFor(t);
-    work.innerHTML = `${o.before || ''}${sheetHtml(E.lines(), { example: true, title: E.cap.replace(/\.$/, ''), who: '' })}
-      ${o.mid || ''}<form id="ask" novalidate>${sheetHtml(lines, { title: 'Your family', rows: L.rows })}
-      ${lines.some((l) => l.input && l.kind === 'pct') ? '<p class="small">Type a percentage like 85%.</p>' : ''}
-      ${t.decision ? `<fieldset class="choose"><legend>So why do many owners with a 3% loan stay put?</legend>${[['move', 'Moving means giving up the 3% loan and borrowing again at 6.5%'], ['bank', 'Banks will not lend to people who already own a home'], ['fixed', 'A fixed-rate loan cannot be paid off early']].map(([v, tx]) => `<label class="choice"><input type="radio" name="dec" value="${v}"${L.choice === v ? ' checked' : ''}><span>${esc(tx)}</span></label>`).join('')}</fieldset>` : ''}
-      <div class="actions"><button class="btn" type="submit">Check</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
-      <div class="fb" id="fb" aria-live="polite"></div><div class="actions" id="helpRow" hidden></div><div class="fb hint" id="helpBox"></div></form>${nextRow(s, !L.done)}`;
-    const inputs = () => $$('.rowin', work);
-    const rowsNow = () => { const r = []; inputs().forEach((x) => { r[Number(x.dataset.row)] = x.value; }); return r; };
-    // Quick feedback: a row turns green the moment it is right; when every row is right the step completes by itself.
-    // A wrong row is only marked when the student presses Check, so nobody is told off mid-typing.
-    let liveT = null;
-    const live = () => {
-      if (L.done) return; const rows = rowsNow(), ch = (work.querySelector('input[name=dec]:checked') || {}).value || null, res = C.judgeTask(t, { rows, choice: ch }, h);
-      (res.rowRes || []).forEach((rr, i) => { const x = $(`.rowin[data-row="${i}"]`, work), mk = $('#mk' + i, work); if (!x || rr == null) return;
-        if (rr.ok && !x.classList.contains('good')) { x.classList.add('good'); x.classList.remove('wrong'); mk.textContent = '✓'; mk.className = 'mark ok'; Snd.tick(); }
-        else if (!rr.ok && x.classList.contains('good')) { x.classList.remove('good'); mk.textContent = ''; } });
-      if (o.onRows) o.onRows(res.rowRes || [], res.ok);
-      if (res.ok) $('#ask', work).requestSubmit();
-    };
-    inputs().forEach((x) => x.addEventListener('input', () => { if (!L.done) { L.rows = rowsNow(); saveState(); } clearTimeout(liveT); liveT = setTimeout(live, 450); }));
-    $$('input[name=dec]', work).forEach((x) => x.addEventListener('change', () => { clearTimeout(liveT); liveT = setTimeout(live, 200); }));
-    const marks = (rowRes) => (rowRes || []).forEach((rr, i) => { const x = $(`.rowin[data-row="${i}"]`, work), mk = $('#mk' + i, work); if (!x || rr == null) return;
-      x.classList.toggle('good', rr.ok); x.classList.toggle('wrong', !rr.ok); if (mk) { mk.textContent = rr.ok ? '✓' : '✗'; mk.className = 'mark ' + (rr.ok ? 'ok' : 'no'); } });
-    function renderHelp() {
-      const row = $('#helpRow', work), fails = L.fails || 0; if (!fails || L.done) { row.hidden = true; return; }
-      row.hidden = false; const labs = ['Show me the first blank', 'Show me every line'].slice(0, Math.min(2, fails));
-      row.innerHTML = labs.map((lab, i) => `<button class="btn small ghost" type="button" data-l="${i + 1}">${lab}</button>`).join('');
-      $$('button[data-l]', row).forEach((b) => b.addEventListener('click', () => { const lvl = Number(b.dataset.l); L.help = Math.max(L.help || 0, lvl); saveState(); showFb($('#helpBox', work), 'hint', C.helpText(t, lvl, h)); }));
-    }
-    renderHelp();
-    $('#ask', work).addEventListener('submit', (e) => {
-      e.preventDefault(); const rows = rowsNow(), ch = (work.querySelector('input[name=dec]:checked') || {}).value || null;
-      const res = C.judgeTask(t, { rows, choice: ch }, h); L.attempts = (L.attempts || 0) + 1; const fb = $('#fb', work);
-      if (res.ok || !L.done) { L.rows = rows; L.choice = ch; }
-      marks(res.rowRes); if (o.onRows) o.onRows(res.rowRes || [], res.ok);
-      if (res.ok) { markDone(s.id); Snd.good(); showFb(fb, 'ok', '<b>Right.</b> ' + C.praise(t, h)); $('#nextRow').hidden = false; $('#helpRow', work).hidden = true; if (o.onRight) o.onRight(); }
-      else { L.fails = (L.fails || 0) + 1; showFb(fb, 'bad', '<b>Not yet.</b> ' + esc(res.msg || 'Check your work and try again.')); renderHelp(); }
-      $('#att', work).textContent = 'Checks so far: ' + L.attempts; saveState();
-    });
-    wireNext(s);
-    if (L.done) { const res = C.judgeTask(t, { rows: L.rows, choice: L.choice }, h); marks(res.rowRes); showFb($('#fb', work), 'ok', C.praise(t, h)); }
-  }
-
   // ---------------- the house: one family's loan, scrubbed over 30 years ----------------
   // Stage geometry. The house is the bar chart: its fill splits into the family's share (green) and the lender's (hatched
   // ink), and the share moves as the loan is paid down. Two layouts: wide (desktop) and tall (phone).
   const HG = {
-    wide: { w: 760, h: 540, HX: 300, HY: 70, HS: 2.2, fam: [232, 222, 1], lbl: [[300, 296], [300, 318], 530, 'start'], ltv: [410, 352],
-      off: [662, 132, 78, 96], sY: 190, sLbl: [752, 96, 268], pile: { x: 40, base: 330, per: 6, dx: 42, step: 8, w: 34, rowGap: 120 }, pileLbl: [150, 362],
+    wide: { w: 760, h: 540, compact: 390, HX: 300, HY: 70, HS: 2.2, fam: [232, 222, 1], lbl: [[300, 296], [300, 318], 530, 'start'], ltv: [410, 352],
+      off: [662, 132, 78, 96], sY: 190, sLbl: [752, 96, 268], pile: { x: 40, base: 330, per: 6, dx: 42, step: 8, w: 34, rowGap: 82 }, pileLbl: [150, 362],
       TX0: 40, TX1: 720, TY: 488, TH: 56, dyn: [720, 'end', -12] },
     tall: { w: 400, h: 640, compact: 320, HX: 26, HY: 70, HS: 1.75, fam: [236, 182, 1], lbl: [[22, 256], [22, 276], 0, 'start'], ltv: [22, 298],
       off: [318, 128, 70, 86], sY: 170, sLbl: [394, 98, 240], pile: { x: 34, base: 430, per: 8, dx: 44, step: 6, w: 34, rowGap: 74 }, pileLbl: [200, 458],
@@ -288,74 +228,166 @@
       if (reduced()) { setMonth(to, opts); return res(); }
       const t0 = performance.now(); const step = (now) => { const k = Math.max(0, Math.min(1, (now - t0) / ms)), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; setMonth(from + (to - from) * e, opts); if (k < 1) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step);
     });
-    return { setShare, labels, streams, pile, track, setMonth, scrubOn, play, figure, q, sch, get month() { return month; } };
+    return { setShare, labels, streams, pile, track, setMonth, scrubOn, play, figure, q, sch, box: { x0: HX0, x1: HX1, y0: HY, y1: base }, get month() { return month; } };
+  }
+
+  // ---------------- the loan math, as things people need from you (round 2) ----------------
+  // Each calculation is a question someone at your desk asks, with something riding on the answer. The answers go into
+  // chips on the object itself (rows of v1's sheet, judged by v1's judgeTask with its diagnoses and help ladder). The
+  // worked instance is the same chips filled in for another family (rule 29). Interactions differ step to step.
+  const PH = { money: '$0', pct: '0%', num: '0.0' };
+  const show = (l) => (l.kind === 'text' ? l.num : F.SHOW[l.kind](l.num));
+  const budgetFor = (t) => Math.ceil((t.pay + 150) / 100) * 100;
+  const SPEECH = {
+    loan: (t) => ['couple', 'A couple at your desk', `“We found a house for ${mm(t.P)} and saved ${pc(t.d)} of the price. How much do we borrow, and how much of the house does that make yours?”`],
+    pay: (t) => ['couple', 'The same couple', `“We can spend ${mm(budgetFor(t))} a month on the house. At ${pc(t.r)}, can we afford it?”`],
+    first: (t) => ['couple', 'The same couple', `“Our first payment is ${mm(t.pay)}. How much of it actually pays off the house?”`],
+    total: () => ['couple', 'The same couple', '“If we pay every month for 30 years, how much of it all is interest?”'],
+    lockin: () => ['family', 'Another couple, years later', '“Our $320,000 loan is at 3%. New loans cost 6.5%. If we moved and borrowed the same again, how much more a month?”'],
+  };
+  const REPLY = {
+    loan: (t) => ['officer', 'Your loan officer', 1 - t.d > 0.8 ? `“That’s ${pc(1 - t.d)} of the value. Above 80%, Fannie Mae needs mortgage insurance on the loan before it will buy it.”` : `“${pc(1 - t.d)} of the value, at or under 80%: Fannie Mae will buy this loan as it is.”`],
+    pay: (t) => ['couple', 'The couple', `“${mm(t.pay)}. That leaves us ${mm(budgetFor(t) - t.pay)} a month. We’ll sign.”`],
+    first: (t) => ['couple', 'The couple', `“Only ${mm(t.principal)}? So most of it is the price of borrowing.”`],
+    total: (t) => ['couple', 'The couple', `“${mm(t.totalInt)} in interest, on top of the ${mm(t.L)} we borrowed.”`],
+    lockin: (t) => ['family', 'The couple', `“About ${mm(t.gap)} more, every month. We’re staying put.”`],
+  };
+  // Chip positions on the wide house drawing (viewBox 760 wide), per step; tall screens and lock-in list the chips under it.
+  const CHIP_AT = { loan: { 1: [16, 168], 2: [552, 120], 3: [552, 236] }, pay: { 1: [16, 8], 2: [16, 116], 3: [16, 224] }, first: { 1: [16, 50], 2: [16, 160] }, total: { 0: [16, 6], 1: [16, 90] } };
+  const personCard = (who) => `<div class="pcard">${A.portrait(who[0], 60)}<div><p class="pwho">${esc(who[1])}</p><p class="pline">${who[2]}</p></div></div>`;
+  function chipsHtml(lines, rows, s, wide, H0) {
+    const at = wide ? CHIP_AT[s] : null;
+    return lines.map((l, i) => {
+      if (!l.input) return '';
+      const p = at && at[i], pos = p ? ` data-y="${p[1]}" style="left:${(100 * p[0] / 760).toFixed(2)}%;top:${(100 * p[1] / H0).toFixed(2)}%"` : '';
+      return `<label class="chip${p ? ' abs' : ''}"${pos}><span class="chip-l">${esc(l.label)}</span><span class="chip-in"><input id="r${i}" class="rowin" data-row="${i}" inputmode="decimal" autocomplete="off" placeholder="${PH[l.kind] || ''}" value="${rows && rows[i] != null ? esc(rows[i]) : ''}"><span class="mark" id="mk${i}" aria-hidden="true"></span></span><span class="chip-c">${l.calc}</span></label>`;
+    }).join('');
+  }
+  function workedHtml(E) {
+    const lines = E.lines();
+    return `<details class="worked" open><summary>Worked example: ${esc(E.cap.replace(/\.$/, ''))}</summary><div class="wchips">${lines.map((l) => `<div class="wchip${l.input ? '' : ' given'}"><span class="chip-l">${esc(l.label)}</span><b>${esc(show(l))}</b><span class="chip-c">${l.calc}</span></div>`).join('')}</div></details>`;
+  }
+  const rateCard = (hi, tap) => `<div class="ratecard"><h3>Rate card: monthly payment for each $100,000, 30 years</h3><table><thead><tr><th scope="col">Rate</th><th scope="col">Per $100,000</th></tr></thead><tbody>${C.RATES.map((r) => `<tr${hi && hi.includes(r) ? ' class="hl"' : ''}><td>${tap ? `<button type="button" class="ratebtn" data-r="${r}">${pc(r)}</button>` : pc(r)}</td><td>${mm(C.TABLE[r])}</td></tr>`).join('')}</tbody></table>${tap ? '<p class="small">Tap your rate to copy its payment.</p>' : ''}</div>`;
+  M.rateCard = rateCard;
+
+  // One calculation step: chips on the object, check, row marks, diagnoses, help ladder, a person's reply, next.
+  function calcStep(s, work, o) {
+    const t = task(s.id), L = S.log[s.id], E = C.EXAMPLES[s.id], lines = C.linesFor(t), scope = o.scope;
+    o.chipHost.innerHTML = chipsHtml(lines, L.rows, s.id, o.wide, o.H0 || 540);
+    const head = $('.work-head', scope); if (head) head.insertAdjacentHTML('beforeend', personCard(SPEECH[s.id](t)));
+    work.innerHTML = `${o.before || ''}${workedHtml(E)}
+      ${t.decision ? `<fieldset class="choose"><legend>So why do many owners with a 3% loan stay put?</legend>${[['move', 'Moving means giving up the 3% loan and borrowing again at 6.5%'], ['bank', 'Banks will not lend to people who already own a home'], ['fixed', 'A fixed-rate loan cannot be paid off early']].map(([v, tx]) => `<label class="choice"><input type="radio" name="dec" value="${v}"${L.choice === v ? ' checked' : ''}><span>${esc(tx)}</span></label>`).join('')}</fieldset>` : ''}
+      <div class="actions"><button class="btn" type="button" id="chkBtn">Check</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
+      <div class="fb" id="fb" aria-live="polite"></div><div class="actions" id="helpRow" hidden></div><div class="fb hint" id="helpBox"></div><div id="reply"></div>${nextRow(s, !L.done)}`;
+    const inputs = () => $$('.rowin', scope);
+    const rowsNow = () => { const r = []; inputs().forEach((x) => { r[Number(x.dataset.row)] = x.value; }); return r; };
+    const choiceNow = () => (work.querySelector('input[name=dec]:checked') || {}).value || null;
+    const marks = (rowRes) => (rowRes || []).forEach((rr, i) => { const x = $(`.rowin[data-row="${i}"]`, scope), mk = $('#mk' + i, scope); if (!x || rr == null) return;
+      x.classList.toggle('good', rr.ok); x.classList.toggle('wrong', !rr.ok); x.closest('.chip').classList.toggle('done', rr.ok); if (mk) { mk.textContent = rr.ok ? '✓' : '✗'; mk.className = 'mark ' + (rr.ok ? 'ok' : 'no'); } });
+    const reply = () => { $('#reply', work).innerHTML = personCard(REPLY[s.id](t)); };
+    function renderHelp() {
+      const row = $('#helpRow', work), fails = L.fails || 0; if (!fails || L.done) { row.hidden = true; return; }
+      row.hidden = false; row.innerHTML = ['Show me the first blank', 'Show me every line'].slice(0, Math.min(2, fails)).map((lab, i) => `<button class="btn small ghost" type="button" data-l="${i + 1}">${lab}</button>`).join('');
+      $$('button[data-l]', row).forEach((b) => b.addEventListener('click', () => { const lvl = Number(b.dataset.l); L.help = Math.max(L.help || 0, lvl); saveState(); showFb($('#helpBox', work), 'hint', C.helpText(t, lvl, h)); }));
+    }
+    function check() {
+      const rows = rowsNow(), ch = choiceNow(), res = C.judgeTask(t, { rows, choice: ch }, h); L.attempts = (L.attempts || 0) + 1; const fb = $('#fb', work);
+      if (res.ok || !L.done) { L.rows = rows; L.choice = ch; }
+      marks(res.rowRes); if (o.onRows) o.onRows(res.rowRes || [], res.ok);
+      if (res.ok) { const first = !L.done; markDone(s.id); Snd.good(); showFb(fb, 'ok', '<b>Right.</b> ' + C.praise(t, h)); reply(); $('#nextRow').hidden = false; $('#helpRow', work).hidden = true; if (o.onRight) o.onRight(first); }
+      else { L.fails = (L.fails || 0) + 1; showFb(fb, 'bad', '<b>Not yet.</b> ' + esc(res.msg || 'Check your work and try again.')); renderHelp(); }
+      $('#att', work).textContent = 'Checks so far: ' + L.attempts; saveState();
+    }
+    // Quick feedback: a chip turns green the moment its row is right; when every row is right the step completes itself.
+    let liveT = null;
+    const live = () => {
+      if (L.done) return; const rows = rowsNow(), res = C.judgeTask(t, { rows, choice: choiceNow() }, h);
+      (res.rowRes || []).forEach((rr, i) => { const x = $(`.rowin[data-row="${i}"]`, scope), mk = $('#mk' + i, scope); if (!x || rr == null) return;
+        if (rr.ok && !x.classList.contains('good')) { x.classList.add('good'); x.classList.remove('wrong'); x.closest('.chip').classList.add('done'); mk.textContent = '✓'; mk.className = 'mark ok'; Snd.tick(); }
+        else if (!rr.ok && x.classList.contains('good')) { x.classList.remove('good'); x.closest('.chip').classList.remove('done'); mk.textContent = ''; } });
+      if (o.onRows) o.onRows(res.rowRes || [], res.ok);
+      if (res.ok) check();
+    };
+    M.liveCheck = () => { clearTimeout(liveT); liveT = setTimeout(live, 300); };
+    inputs().forEach((x) => x.addEventListener('input', () => { if (!L.done) { L.rows = rowsNow(); saveState(); } clearTimeout(liveT); liveT = setTimeout(live, 450); }));
+    inputs().forEach((x) => x.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); check(); } }));
+    $$('input[name=dec]', work).forEach((x) => x.addEventListener('change', () => { clearTimeout(liveT); liveT = setTimeout(live, 200); }));
+    $('#chkBtn', work).addEventListener('click', check);
+    renderHelp(); wireNext(s);
+    if (L.done) { const res = C.judgeTask(t, { rows: L.rows, choice: L.choice }, h); marks(res.rowRes); showFb($('#fb', work), 'ok', C.praise(t, h)); reply(); }
   }
 
   function showHouse(main, s) {
-    const t = task(s.id), L = S.log[s.id], { stage, work } = beat(main, s);
-    const H = houseScene(stage, t, s.id === 'loan' || s.id === 'pay' || (s.id === 'first' && !L.done)), cap = $('#houseCap');
-    const shareLabels = () => H.labels({ fam: `Family paid ${mm(t.down)} down`, len: `You lend ${mm(t.L)}`, ltv: `Loan-to-value ${pc(1 - t.d)}` });
+    const t = task(s.id), L = S.log[s.id], { stage, work } = beat(main, s, { person: true });
+    const compact = s.id === 'loan' || s.id === 'pay' || (s.id === 'first' && !L.done);
+    const H = houseScene(stage, t, compact), svg = $('#houseSvg'), wide = !svg.getAttribute('viewBox').startsWith('0 0 400');
+    $('#houseCap').remove();
+    // chips live over the drawing (wide) or in a row under it (tall)
+    svg.insertAdjacentHTML('beforebegin', '<div class="objwrap" id="objwrap"></div>');
+    const wrap = $('#objwrap'); wrap.appendChild(svg); wrap.insertAdjacentHTML('beforeend', `<div class="chips${wide ? ' over' : ''}" id="chips"></div>`);
+    const H0 = Number(svg.getAttribute('viewBox').split(' ')[3]);
+    const base = { chipHost: $('#chips'), wide, H0, scope: main };
     if (s.id === 'loan') {
-      const paint = (rowRes, done) => {
-        const ok = (i) => done || (rowRes[i] && rowRes[i].ok);
-        H.figure(true); if (ok(1)) H.setShare(t.d, true);
-        H.labels({ fam: ok(1) ? `Family pays ${mm(t.down)} down` : '', len: ok(2) ? `You lend ${mm(t.L)}` : '', ltv: ok(3) ? `Loan-to-value ${pc(1 - t.d)}` : '' });
-        cap.innerHTML = done || ok(3) ? `The lender’s share of the house is the <b>loan-to-value</b>: ${pc(1 - t.d)}. If the family stops paying, the lender can take the house.` : 'As your numbers check out, the house splits into the family’s share and the lender’s.';
-      };
+      H.figure(wide); H.labels({ fam: 'The family’s share', len: 'Your loan' });
+      const paint = (rowRes, done) => { const ok = (i) => done || (rowRes[i] && rowRes[i].ok); if (ok(1) || ok(3)) H.setShare(t.d, true); };
       paint([], L.done);
-      calcStep(s, work, { onRows: (rr) => paint(rr, L.done) });
+      calcStep(s, work, Object.assign(base, { onRows: (rr) => paint(rr, L.done) }));
+      // Loan-to-value by hand: drag the line across the house to the lender's share (snaps to 5%).
+      const ltv = $('.rowin[data-row="3"]', main), chip = ltv.closest('.chip');
+      chip.insertAdjacentHTML('beforeend', '<span class="chip-c drag-hint">or drag the line on the house</span>');
+      let drag = false; const setFrom = (ev) => { const P = svg.createSVGPoint(); P.x = ev.clientX; P.y = ev.clientY; const p = P.matrixTransform(svg.getScreenCTM().inverse());
+        const x0 = H.box.x0, x1 = H.box.x1, v = Math.max(0, Math.min(1, (p.x - x0) / (x1 - x0))), lend = Math.round((1 - v) * 20) / 20; H.setShare(1 - lend); ltv.value = Math.round(lend * 100) + '%'; ltv.dispatchEvent(new Event('input', { bubbles: true })); };
+      svg.addEventListener('pointerdown', (ev) => { if (L.done) return; const P = svg.createSVGPoint(); P.x = ev.clientX; P.y = ev.clientY; const p = P.matrixTransform(svg.getScreenCTM().inverse()); if (p.y < H.box.y0 || p.y > H.box.y1 || p.x < H.box.x0 - 10 || p.x > H.box.x1 + 10) return; drag = true; svg.setPointerCapture(ev.pointerId); setFrom(ev); });
+      svg.addEventListener('pointermove', (ev) => { if (drag) setFrom(ev); }); svg.addEventListener('pointerup', () => { drag = false; });
+      svg.classList.add('draggable');
+      if (!L.done) H.setShare(0.5);
     } else if (s.id === 'pay') {
-      H.setShare(t.d); shareLabels(); H.figure(true);
-      const paint = (done) => { if (done) { H.figure(false); H.streams(null); H.streams({}, { whole: true }); cap.innerHTML = `Every month for 30 years, ${mm(t.pay)} leaves the house. The same amount every month.`; } else cap.textContent = 'Read the family’s row on the rate card. The payment will flow out of the house once it checks out.'; };
+      H.setShare(t.d); H.figure(wide); H.labels({ fam: `Family paid ${mm(t.down)} down`, len: `You lend ${mm(t.L)}` });
+      const paint = (done) => { if (done) { H.figure(false); H.streams(null); H.streams({}, { whole: true }); } };
       paint(L.done);
-      calcStep(s, work, { before: rateCard([t.r]), onRight: () => paint(true) });
+      calcStep(s, work, Object.assign(base, { before: wide ? '' : rateCard([t.r], true), onRight: () => { paint(true); const oc = $('.onstage-card', main); if (oc) oc.remove(); } }));
+      if (wide && !L.done) wrap.insertAdjacentHTML('beforeend', `<div class="onstage-card">${rateCard([t.r], true)}</div>`);
+      $$('.ratebtn', main).forEach((b) => b.addEventListener('click', () => { const x = $('.rowin[data-row="2"]', main); x.value = C.TABLE[Number(b.dataset.r)].toFixed(2); x.dispatchEvent(new Event('input', { bubbles: true })); Snd.tick(); }));
     } else if (s.id === 'first') {
-      H.setShare(t.d); shareLabels();
-      const paint = (done) => {
-        if (done) { H.scrubOn(1, {}); cap.innerHTML = `Month 1: most of the payment is interest. Drag along the 30 years: each month a little more pays down the loan.`; }
-        else { H.streams(null, {}); H.streams({}, { unsplit: true }); cap.textContent = 'The first payment splits into interest and the part that pays down the loan.'; }
-      };
+      H.setShare(t.d);
+      const paint = (done) => { if (done) H.scrubOn(1, {}); else { H.streams(null, {}); H.streams({}, { unsplit: true }); } };
       paint(L.done);
-      calcStep(s, work, { onRight: () => { paint(true); } });
+      calcStep(s, work, Object.assign(base, { onRight: () => { paint(true); const h0 = Number(svg.getAttribute('viewBox').split(' ')[3]); $$('.chip.abs', main).forEach((c) => { c.style.top = (100 * Number(c.dataset.y) / h0).toFixed(2) + '%'; }); } }));
     } else {
-      H.setShare(t.d); shareLabels();
-      const opts = { showTotal: L.done };
-      H.scrubOn(1, opts);
-      cap.innerHTML = L.done ? `Drag along the 30 years. At the end the pile is ${mm(t.totalInt)}, the interest you found.` : 'Drag along the 30 years. The loan shrinks slowly at first and fast at the end, while the interest piles up beside the house.';
-      calcStep(s, work, { onRight: () => { opts.showTotal = true; cap.innerHTML = `At the end the pile is ${mm(t.totalInt)}, the interest you found.`; H.play(H.month, 360, 2600, opts); } });
+      H.setShare(t.d);
+      const opts = { showTotal: L.done }; H.scrubOn(1, opts);
+      calcStep(s, work, Object.assign(base, { onRight: () => { opts.showTotal = true; H.play(H.month, 360, 2600, opts); } }));
     }
   }
 
   // ---------------- lock-in: two identical houses, two coin streams ----------------
   function showLockin(main, s) {
-    const t = task(s.id), L = S.log[s.id], { stage, work } = beat(main, s);
-    stage.innerHTML = `<svg class="world" id="lockSvg" viewBox="0 0 760 470" role="img" aria-labelledby="lkT"><title id="lkT">Two identical houses, one financed at 3% and one at 6.5%</title>
-      ${A.house(105, 60, 1.9, { body: K.onInk, door: K.ink })}${A.house(465, 60, 1.9, { body: K.onInk, door: K.ink })}
-      <text x="200" y="40" text-anchor="middle" font-family="Jost" font-weight="600" font-size="19" fill="${K.onInk}">Old loan at 3%</text>
-      <text x="560" y="40" text-anchor="middle" font-family="Jost" font-weight="600" font-size="19" fill="${K.onInk}">New loan at 6.5%</text>
-      <text x="200" y="262" text-anchor="middle" font-family="Jost" font-size="15" fill="${K.muted}">$320,000 borrowed</text><text x="560" y="262" text-anchor="middle" font-family="Jost" font-size="15" fill="${K.muted}">$320,000 borrowed</text>
-      <g id="lkA"></g><g id="lkB"></g><g id="lkGap"></g><text id="lkLa" x="200" y="452" text-anchor="middle" font-family="Jost" font-weight="600" font-size="18" fill="${K.onInk}"></text><text id="lkLb" x="560" y="452" text-anchor="middle" font-family="Jost" font-weight="600" font-size="18" fill="${K.onInk}"></text></svg>
-      <p class="caption" id="lkCap"></p>`;
+    const t = task(s.id), L = S.log[s.id], { stage, work } = beat(main, s, { person: true });
+    const wideL = (stage.clientWidth || root.innerWidth) >= 600;
+    stage.innerHTML = `<div class="objwrap" id="objwrap"><svg class="world" id="lockSvg" viewBox="0 0 760 470" role="img" aria-labelledby="lkT"><title id="lkT">Two identical houses, one financed at 3% and one at 6.5%</title>
+      ${A.house(40, 70, 1.6, { body: K.onInk, door: K.ink })}${A.house(300, 70, 1.6, { body: K.onInk, door: K.ink })}
+      <text x="120" y="44" text-anchor="middle" font-family="Jost" font-weight="600" font-size="21" fill="${K.onInk}">Their 3% loan</text>
+      <text x="380" y="44" text-anchor="middle" font-family="Jost" font-weight="600" font-size="21" fill="${K.onInk}">A new loan at 6.5%</text>
+      <text x="120" y="240" text-anchor="middle" font-family="Jost" font-size="16" fill="${K.muted}">$320,000 borrowed</text><text x="380" y="240" text-anchor="middle" font-family="Jost" font-size="16" fill="${K.muted}">$320,000 borrowed</text>
+      <g id="lkA"></g><g id="lkB"></g><g id="lkGap"></g><text id="lkLa" x="120" y="452" text-anchor="middle" font-family="Jost" font-weight="600" font-size="19" fill="${K.onInk}"></text><text id="lkLb" x="380" y="452" text-anchor="middle" font-family="Jost" font-weight="600" font-size="19" fill="${K.onInk}"></text></svg>
+      ${wideL ? `<div class="onstage-card">${rateCard([0.03, 0.065])}</div>` : ''}</div>
+      <div class="chips" id="chips"></div>`;
     const svg = $('#lockSvg');
     const paint = (done) => {
-      // Each column of coins is one month's payment; one coin is $100.
       // One coin is $100. The new loan's column is the old payment plus an extra column (dashed red rim) for the gap.
       const col = (x, n, extra) => { let g = ''; for (let k = 0; k < n; k++) g += A.coinEdge(x, 420 - k * 9, 34) + (extra ? `<ellipse cx="${x}" cy="${420 - k * 9}" rx="17" ry="5.8" fill="none" stroke="${K.red}" stroke-width="1.8" stroke-dasharray="3 2"/>` : ''); return g; };
       if (done) {
-        svg.querySelector('#lkA').innerHTML = col(200, Math.round(t.lo / 100));
-        svg.querySelector('#lkB').innerHTML = col(540, Math.round(t.lo / 100)) + col(586, Math.round(t.hi / 100) - Math.round(t.lo / 100), true);
+        svg.querySelector('#lkA').innerHTML = col(120, Math.round(t.lo / 100));
+        svg.querySelector('#lkB').innerHTML = col(360, Math.round(t.lo / 100)) + col(406, Math.round(t.hi / 100) - Math.round(t.lo / 100), true);
         svg.querySelector('#lkLa').textContent = `${mm(t.lo)} a month`; svg.querySelector('#lkLb').textContent = `${mm(t.hi)} a month`;
-        svg.querySelector('#lkGap').innerHTML = `<text x="612" y="340" font-family="Jost" font-weight="600" font-size="17" fill="${K.gold}">+${mm(t.gap)}</text><text x="612" y="360" font-family="Jost" font-size="14" fill="${K.muted}">more, every month</text>`;
-        $('#lkCap').innerHTML = `Same house, same loan. Moving would cost about <b>${mm(t.gap)} more every month</b> for 30 years. One coin is $100.`;
+        svg.querySelector('#lkGap').innerHTML = `<text x="432" y="330" font-family="Jost" font-weight="600" font-size="18" fill="${K.gold}">+${mm(t.gap)}</text><text x="432" y="350" font-family="Jost" font-size="15" fill="${K.muted}">every month</text>`;
       } else {
-        svg.querySelector('#lkA').innerHTML = `<text x="200" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.line}">?</text>`;
-        svg.querySelector('#lkB').innerHTML = `<text x="560" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.line}">?</text>`;
-        svg.querySelector('#lkLa').textContent = 'a month'; svg.querySelector('#lkLb').textContent = 'a month'; svg.querySelector('#lkGap').innerHTML = '';
-        $('#lkCap').textContent = 'Find each payment on the rate card. The coins will show what each house pays a month.';
+        svg.querySelector('#lkA').innerHTML = `<text x="120" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.line}">?</text>`;
+        svg.querySelector('#lkB').innerHTML = `<text x="380" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.line}">?</text>`;
       }
     };
     paint(L.done);
-    calcStep(s, work, { before: rateCard([0.03, 0.065]), onRight: () => paint(true) });
+    calcStep(s, work, { chipHost: $('#chips'), wide: false, scope: main, before: wideL ? '' : rateCard([0.03, 0.065]), onRight: () => paint(true) });
   }
 
   // ---------------- place cards into slots (chain and paid): tap a card, then a slot; or drag ----------------
@@ -413,7 +445,7 @@
   function showChain(main, s) {
     const t = task(s.id), L = S.log[s.id], { stage, work } = beat(main, s);
     stage.innerHTML = `<div class="bays" id="bays" role="list">${[1, 2, 3, 4, 5].map((n) => `<div role="listitem" class="bay-wrap"><button type="button" class="bay" data-slot="${n}" id="bay${n}" aria-label="Bay ${n}, empty"><span class="bay-n">${n}</span><span class="bay-art" id="bayArt${n}"></span><span class="bay-txt" id="bayTxt${n}">Drop an event here</span><span class="bay-mk" id="bayMk${n}" aria-hidden="true"></span></button></div>`).join('')}</div>
-      <div class="belt" aria-hidden="true"><span class="loan-rider" id="rider"></span></div><p class="caption" id="chCap">First on the left, last on the right.</p>`;
+      <div class="belt" aria-hidden="true"><span class="loan-rider" id="rider"></span></div><p class="caption" id="chCap"></p>`;
     const rowsToVal = (rows) => { const v = {}; (rows || []).forEach((r, i) => { if (r) v[String(i)] = String(r); }); return v; };
     work.innerHTML = `<div class="tray" id="tray">${C.EVENT_SHOWN.map((e, i) => `<button type="button" class="card" data-key="${i}" aria-pressed="false"><span class="grip" aria-hidden="true"></span><span>${esc(C.EVENTS[e])}</span></button>`).join('')}</div>
       <p class="hint-line">Tap an event, then tap its bay. Or drag it there.</p>
@@ -465,7 +497,7 @@
     const t = task(s.id), L = S.log[s.id], { stage, work } = beat(main, s);
     stage.innerHTML = `<div class="players" id="players" role="list">${C.PLAYERS.map((p, i) => `<div role="listitem" class="player-wrap"><button type="button" class="player" data-slot="${i}" id="pl${i}" aria-label="${esc(p)}, no pay tag yet">
         <span class="pl-art">${PLAYER_ART[i]()}</span><span class="pl-name">${esc(p)}</span><span class="pl-tag" id="plTag${i}">Hang a pay tag here</span><span class="pl-mk" id="plMk${i}" aria-hidden="true"></span><span class="pl-pay" id="plPay${i}" aria-hidden="true"></span></button></div>`).join('')}</div>
-      <p class="caption" id="pdCap">Tap a pay tag, then the player it belongs to.</p>`;
+      <p class="caption" id="pdCap"></p>`;
     work.innerHTML = `<div class="tray" id="tray">${C.PAYS.map(([k, txt]) => `<button type="button" class="card tagcard" data-key="${k}" aria-pressed="false"><span class="grip" aria-hidden="true"></span><span>${esc(txt)}</span></button>`).join('')}</div>
       <p class="hint-line">Tap a pay tag, then tap its player. Or drag it there.</p>
       <div class="actions"><button class="btn" type="button" id="chk">Check the tags</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
@@ -520,11 +552,11 @@
       </svg>
       <div class="pricerail" id="rail"><div class="rail-track" aria-hidden="true"></div>
         ${POS.map((p) => `<button type="button" class="rail-stop" data-pos="${p}" style="top:${Y[p]}px">${p === 'up' ? 'Higher' : p === 'level' ? 'Same' : 'Lower'}</button>`).join('')}
-        <div class="pricetag" id="tag" role="slider" tabindex="0" aria-label="Price of the old bond" aria-valuemin="-1" aria-valuemax="1" style="top:${Y[cur || 'level']}px"><span>Price</span></div></div></div>
-      <p class="caption">${cur ? '' : 'Drag the price tag, or use the arrow keys.'}</p>`;
+        <div class="pricetag" id="tag" role="slider" tabindex="0" aria-label="Price of the old bond" aria-valuemin="-1" aria-valuemax="1" style="top:${Y[cur || 'level']}px"><span>${cur ? 'Price' : 'Drag me'}</span></div></div></div>
+`;
     let pos = cur || null;
     const tag = $('#tag');
-    const setPos = (p, quiet) => { pos = p; tag.style.top = Y[p] + 'px'; tag.setAttribute('aria-valuenow', p === 'up' ? 1 : p === 'level' ? 0 : -1); tag.setAttribute('aria-valuetext', p === 'up' ? 'The price rises' : p === 'level' ? 'The price stays the same' : 'The price falls'); tag.classList.add('set'); if (!quiet) Snd.tick(); };
+    const setPos = (p, quiet) => { pos = p; tag.querySelector('span').textContent = 'Price'; tag.style.top = Y[p] + 'px'; tag.setAttribute('aria-valuenow', p === 'up' ? 1 : p === 'level' ? 0 : -1); tag.setAttribute('aria-valuetext', p === 'up' ? 'The price rises' : p === 'level' ? 'The price stays the same' : 'The price falls'); tag.classList.add('set'); if (!quiet) Snd.tick(); };
     if (cur) setPos(cur, true); else { tag.setAttribute('aria-valuenow', 0); tag.setAttribute('aria-valuetext', 'Not moved yet'); }
     $$('.rail-stop').forEach((b) => b.addEventListener('click', () => setPos(b.dataset.pos)));
     tag.addEventListener('keydown', (e) => { const i = POS.indexOf(pos || 'level'); if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setPos(POS[Math.max(0, i - 1)]); e.preventDefault(); } if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setPos(POS[Math.min(2, i + 1)]); e.preventDefault(); } });
@@ -554,7 +586,7 @@
     stage.innerHTML = `<div class="q2"><div class="q2-top"><svg viewBox="0 0 220 120" class="q2house" aria-hidden="true">${A.house(20, 14, 1, { body: K.line, door: K.ink })}<text x="160" y="70" font-family="Jost" font-weight="600" font-size="16" fill="${K.onInk}">Year 3</text></svg>
         <button type="button" class="token" id="token" aria-pressed="false"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" fill="${K.red}" stroke="${K.onInk}" stroke-width="2"/><path d="M14 10 L24 20 L18 25 L30 36" stroke="${K.ink}" stroke-width="3" fill="none"/></svg><span>Missed payment</span></button></div>
       <div class="q2-row" role="list">${ORDER.map((k) => `<div role="listitem"><button type="button" class="player q2p" data-slot="${k}" id="q2${k}"><span class="pl-art">${ART[k]()}</span><span class="pl-name">${esc(q.options[C.Q2_DROP[k]])}</span><span class="pl-mk" id="q2mk${k}" aria-hidden="true"></span></button></div>`).join('')}</div></div>
-      <p class="caption">Tap the missed payment, then the player who loses money. Or drag it there.</p>`;
+`;
     let sel = cur;
     const paint = () => ORDER.forEach((k) => { $('#q2' + k).classList.toggle('chosen', sel === k); $('#q2' + k).setAttribute('aria-pressed', String(sel === k)); });
     paint();
@@ -647,7 +679,7 @@
       <div class="actions"><a class="btn gold" id="dl" download="${fileName}" href="#">Download your receipt</a></div>
       <ul class="steps-left">${D.STEPS.map((s, i) => `<li><span class="st ${S.log[s.id].done ? 'ok' : 'no'}">${S.log[s.id].done ? '✓ done' : '✗ open'}</span><span>${i + 1}. ${esc(s.label)}</span>${S.log[s.id].done ? '' : ` <button class="btn small ghost" type="button" data-go="${s.id}">Open</button>`}</li>`).join('')}</ul>
       <p class="small">The file is named ${esc(fileName)}. Upload the downloaded file itself, not a screenshot: your instructor’s checker reads data stored inside the file. If you finish more steps later, download a new receipt.</p>
-      <p class="small">This desk is graded on completion and on your memo: all ${D.STEPS.length} steps and a memo that does what step ${stepIdx('note') + 1} asks earn all ${D.POINTS} points; at least ${Math.ceil(D.STEPS.length / 2)} steps earn ${D.POINTS / 2}.</p>`);
+`);
     $('#dl').href = URL.createObjectURL(r.blob);
     $$('button[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   }
@@ -663,17 +695,13 @@
         <div><p class="dek">${esc(C.story.dek)}</p>
           ${lastSaved ? `<p style="margin:12px 0 0;color:${K.muted}">Welcome back. Your desk code is <b style="color:${K.onInk}">${h.fmtCode(last)}</b>.</p>` : ''}
           <div class="actions on-ink"><button class="btn" type="button" id="goBtn">${lastSaved ? 'Continue where you left off' : 'Run the lender'}</button></div>
+          <p class="credit-line">Reach the end and download your receipt to earn the ${D.POINTS} points.</p>
           <details class="resume"><summary>Started on another computer?</summary><form id="codeForm" novalidate><label for="dc">Your desk code</label>
             <input type="text" id="dc" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345" aria-describedby="dcHelp startErr">
             <p class="small" id="dcHelp" style="color:${K.muted}">It is at the foot of every page of the desk and on your receipt.</p><p class="err" id="startErr" role="alert"></p>
             <div class="actions on-ink"><button class="btn ghost" type="submit">Continue with this code</button></div></form></details></div></div>
       <div id="heroMachine" style="margin-top:22px"></div>
-      <div class="howbox"><h2>How this desk is graded</h2><ul>
-        <li>${n} short steps. First you run the lender from 2002 to 2008; finishing the game completes its step, however it turns out. Then you find out what just happened, write a memo to your board, and work out what one loan costs a family.</li>
-        <li><b>This desk is graded on completion and on your memo.</b> Finish all ${n} steps, with a memo that does what step ${stepIdx('note') + 1} asks, to earn all ${D.POINTS} points (at least ${Math.ceil(n / 2)} steps earns ${D.POINTS / 2}). A wrong answer never costs points.</li>
-        <li>Check your answers as often as you like. If you get stuck, the help buttons show the setup with your own numbers.</li>
-        <li>The <b>Calculator</b> button at the top opens a calculator beside the desk.</li>
-        <li>When you finish, download your receipt and upload it to the assignment page.</li></ul></div></div></section>`;
+      </div></section>`;
     if (M.heroMachine) M.heroMachine($('#heroMachine'));
     $('#goBtn').addEventListener('click', () => { startFor(lastSaved ? last : h.newCode()); const first = D.STEPS.find((s) => !S.log[s.id].done); go(lastSaved && S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt')); });
     $('#codeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#dc').value;

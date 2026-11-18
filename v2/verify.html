@@ -39,9 +39,12 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:14px}
 <script>window.DESK_NO_UI = true;</script>
 <script src="js/core.js"></script>
 <script src="js/rules.js"></script>
+<script>window.DESK_V2 = window.DESK;</script>
+<script src="js/rules-v1.js"></script>
+<script>window.DESK_V1 = window.DESK; window.DESK = window.DESK_V2;</script>
 <script>
 (function(){
-const Desk=DeskEngine.make(window.DESK); document.getElementById('vt').textContent='Check '+DESK.story.title+' receipts'; document.title=document.getElementById('vt').textContent;
+const DESKS={1:DeskEngine.make(window.DESK_V1),2:DeskEngine.make(window.DESK_V2)}; const Desk=DESKS[2]; /* version 1 receipts are checked with version 1 rules (rule 16) */ document.getElementById('vt').textContent='Check '+DESK.story.title+' receipts'; document.title=document.getElementById('vt').textContent;
 const out=document.getElementById('out');
 const rows=[];
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -52,7 +55,7 @@ async function handle(files){
     if(!text){rows.push({file:f.name,error:'No receipt data found. This is not a receipt from this desk, or the image was re-saved (a screenshot or an edited copy loses the data).'});continue;}
     const p=Desk.decodeReceipt(text);
     if(!p){rows.push({file:f.name,error:'The receipt data could not be read.'});continue;}
-    const v=Desk.verifyPayload(p);
+    const v=(DESKS[p.v]||Desk).verifyPayload(p);
     rows.push({file:f.name,p,v});
   }
   render();

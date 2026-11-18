@@ -126,5 +126,22 @@
   // The header mark: a house with an arrow leaving it.
   const mark = () => `<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M1 10 L9 3 L17 10 V20 H1Z" fill="${K.onInk}"/><path d="M19 13 H28 M24 9 L28 13 L24 17" stroke="${K.gold}" stroke-width="2.4" fill="none"/></svg>`;
 
-  root.Art = { K, bondChip, at, person, family, seated, house, HOUSE_PATH, coin, coinEdge, paper, office, press, bank, booth, globe, closing, pool, bond, briefcase, board, mark };
+
+  // Portraits for the people in the game: an Isotype bust in a round frame, no face; each role has its own color and one
+  // object, so they are told apart at a glance (and by the name printed beside them, never by color alone).
+  const BUST = (fill) => `<circle cx="40" cy="31" r="12" fill="${fill}"/><path d="M17 74 C17 52 26 46 40 46 C54 46 63 52 63 74 Z" fill="${fill}"/>`;
+  const PORTRAITS = {
+    officer: { bg: '#2E6B8A', art: () => `${BUST(K.onInk)}<rect x="44" y="50" width="20" height="26" rx="1" fill="${K.sheet}" stroke="${K.ink}" stroke-width="1.5"/><path d="M48 57h12M48 62h12M48 67h8" stroke="${K.ink}" stroke-width="1.6"/><rect x="50" y="47" width="8" height="5" fill="${K.gold}"/>` },
+    chair: { bg: '#5B4A7A', art: () => `${BUST(K.ink)}<circle cx="40" cy="31" r="12" fill="#C9CED6"/><path d="M36 46 L40 64 L44 46 Z" fill="${K.gold}"/><path d="M30 47 L36 46 L40 55 Z M50 47 L44 46 L40 55 Z" fill="${K.sheet}"/>` },
+    rival: { bg: '#A33A22', art: () => `${BUST(K.onInk)}<path d="M33 47 L40 52 L47 47 L47 55 L40 51 L33 55 Z" fill="${K.gold}"/><path d="M60 40 L66 40 L64 52 L62 52 Z" fill="${K.gold}" opacity=".9"/><rect x="62" y="52" width="2" height="9" fill="${K.gold}"/><rect x="59" y="61" width="8" height="2" fill="${K.gold}"/>` },
+    wallst: { bg: '#36404F', art: () => `${BUST(K.onInk)}<path d="M31 50 L35 74 M49 50 L45 74" stroke="${K.red}" stroke-width="3"/><rect x="51" y="20" width="7" height="20" rx="3" fill="${K.gold}" transform="rotate(18 54 30)"/>` },
+    analyst: { bg: '#7A5A12', art: () => `${BUST(K.onInk)}<rect x="45" y="52" width="22" height="13" fill="${K.ink}" transform="rotate(-10 56 58)"/><text x="56" y="62" text-anchor="middle" font-family="Jost, sans-serif" font-weight="700" font-size="9" fill="${K.gold}" transform="rotate(-10 56 58)">AAA</text>` },
+    fannie: { bg: '#1F6B52', art: () => `${BUST(K.onInk)}<circle cx="53" cy="58" r="8" fill="${K.green}" stroke="${K.onInk}" stroke-width="1.5"/><path transform="translate(53 58) scale(.5)" d="M0 -11 L3.2 -3.5 L11 -3.5 L4.8 1.6 L7 9.5 L0 4.8 L-7 9.5 L-4.8 1.6 L-11 -3.5 L-3.2 -3.5Z" fill="${K.onInk}"/>` },
+    regulator: { bg: '#3E5A3A', art: () => `${BUST(K.onInk)}<path d="M46 52 h14 v8 c0 6 -7 10 -7 10 c0 0 -7 -4 -7 -10 Z" fill="${K.gold}" stroke="${K.ink}" stroke-width="1.2"/>` },
+    family: { bg: '#2E8B6A', art: () => `<g fill="${K.onInk}"><circle cx="27" cy="34" r="8"/><path d="M14 74 C14 56 19 48 27 48 C35 48 40 56 40 74Z"/><circle cx="52" cy="34" r="8"/><path d="M39 74 C39 56 44 48 52 48 C60 48 65 56 65 74Z"/><circle cx="40" cy="50" r="6"/><path d="M31 76 C31 64 35 59 40 59 C45 59 49 64 49 76Z"/></g>` },
+    person: { bg: '#2E8B6A', art: () => `${BUST(K.onInk)}` },
+    couple: { bg: '#3C7F8F', art: () => `<g fill="${K.onInk}"><circle cx="29" cy="33" r="9"/><path d="M12 76 C12 54 19 47 29 47 C39 47 44 54 44 76Z"/><circle cx="52" cy="33" r="9"/><path d="M36 76 C36 54 42 47 52 47 C62 47 68 54 68 76Z"/></g>` },
+  };
+  const portrait = (role, size) => { const P = PORTRAITS[role] || PORTRAITS.person; return `<svg class="portrait" viewBox="0 0 80 80" width="${size || 64}" height="${size || 64}" aria-hidden="true"><defs><clipPath id="pc-${role}"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="${P.bg}"/><g clip-path="url(#pc-${role})">${P.art()}</g></svg>`; };
+  root.Art = { K, bondChip, portrait, at, person, family, seated, house, HOUSE_PATH, coin, coinEdge, paper, office, press, bank, booth, globe, closing, pool, bond, briefcase, board, mark };
 })(window);

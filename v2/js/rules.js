@@ -3,7 +3,8 @@
    (../../../w06/desk/config.js, reviewed twice; copied verbatim below, HTML builders removed). What is new here:
    the step order (the story now runs left to right along the machine), plain-text problem statements for the new
    screens, the amortization schedule the house's 30-year track draws, and the gesture-to-answer maps for the two checks.
-   app, version, seedVersion and salt are unchanged on purpose: a v2 receipt verifies on v1's verify.html too.
+   app, seedVersion and salt are v1's; version is 2 because a saved game now carries its variant ("v:SEQ"). v2's verify.html
+   checks both versions (it loads v1's config as js/rules-v1.js for version 1 receipts).
    No DOM here; Node loads it for the tests and verify.html loads it with DESK_NO_UI. */
 (function (root) {
   'use strict';
@@ -22,28 +23,45 @@
   // Bad loans sent back (millions) for each loose year: the 2005 and 2006 loans come back in 2007, older ones in 2008.
   const BACK = { 2002: 10, 2003: 30, 2004: 70, 2005: 120, 2006: 130 };
   const START_CASH = 20;
-  function backIn(year, seq) {
-    let b = 0;
+  // ---- Version 2: each play varies, honestly (owner's notes, 2026-11-18) ----
+  // Variant 0 is version 1's game exactly. The others change how big the boom is (g: the rival's and your loose profits),
+  // how much bad loans cost when they come back (b: buybacks grow with the boom), how patient the board is (T: the rival
+  // may beat you by up to $T million a year before it counts as falling behind), and when in 2007 buyers stop (early: you
+  // are stuck with all of 2007's loose loans; late: half of them sell first). Only combinations for which every v1 property
+  // holds over all 2,187 plans are listed (tests/core_test.js re-proves each one): no winning path, both endings, loose
+  // out-earns normal and strict every year 2002 to 2006, all-loose is bankrupt in 2007, strict twice is fired in 2003, the
+  // rival goes bankrupt in 2007. A bigger boom without bigger buybacks lets a player win, so they move together.
+  const VARIANTS = [];
+  [[1, 1], [0.9, 1], [1.15, 1.2], [1.3, 1.2]].forEach(([g, b]) => [0, 3].forEach((T) => [false, true].forEach((late) => VARIANTS.push({ g, b, T, late }))));
+  const PARAMS = VARIANTS.map((v) => ({ v,
+    PROFIT: { S: PROFIT.S, N: PROFIT.N, L: PROFIT.L.slice(0, 5).map((x) => Math.round(x * v.g)).concat(v.late ? [-15, -15] : [-30, -30]) },
+    BACK: Object.fromEntries(Object.entries(BACK).map(([k, x]) => [k, Math.round(x * v.b)])) }));
+  function backIn(year, seq, P) {
+    const BK = (P || PARAMS[0]).BACK; let b = 0;
     for (let j = 0; j < seq.length && YEARS[j] < year; j++) {
       if (seq[j] !== 'L') continue;
-      if (year === 2007 && YEARS[j] >= 2005) b += BACK[YEARS[j]];
-      if (year === 2008 && YEARS[j] <= 2004) b += BACK[YEARS[j]];
+      if (year === 2007 && YEARS[j] >= 2005) b += BK[YEARS[j]];
+      if (year === 2008 && YEARS[j] <= 2004) b += BK[YEARS[j]];
     }
     return b;
   }
+  // A saved game is "v:SEQ" (v = variant number) or, as in version 1, a bare SEQ (variant 0).
+  const parseGame = (val) => { const m = /^(\d+):([A-Z]*)$/.exec(String(val || '').trim().toUpperCase()); return m ? { v: Number(m[1]), seq: m[2] } : { v: 0, seq: String(val || '').trim().toUpperCase() }; };
   // Plays a sequence of choices for you and the always-loose rival. Stops at the first ending.
-  function gameSim(seq) {
+  function gameSim(seq, vi) {
     seq = String(seq || '');
+    const P = PARAMS[vi || 0]; if (!P) return { rows: [], ending: null, bad: true };
+    const PR = P.PROFIT, T = P.v.T;
     const rows = []; let cash = START_CASH, rcash = START_CASH, trail = 0, ending = null, rivalBust = null;
     const rseq = 'LLLLLLL';
     for (let i = 0; i < seq.length && i < YEARS.length; i++) {
       const y = YEARS[i], c = seq[i];
       if (!'SNL'.includes(c)) return { rows, ending: null, bad: true };
-      const made = PROFIT[c][i], back = backIn(y, seq), profit = made - back;
+      const made = PR[c][i], back = backIn(y, seq, P), profit = made - back;
       let rmade = null, rback = null, rprofit = null;
-      if (rivalBust === null) { rmade = PROFIT.L[i]; rback = backIn(y, rseq); rprofit = rmade - rback; rcash += rprofit; if (rcash < 0) rivalBust = y; }
+      if (rivalBust === null) { rmade = PR.L[i]; rback = backIn(y, rseq, P); rprofit = rmade - rback; rcash += rprofit; if (rcash < 0) rivalBust = y; }
       cash += profit;
-      const trailed = rprofit !== null && profit < rprofit;
+      const trailed = rprofit !== null && rprofit - profit > T;
       trail = trailed ? trail + 1 : 0;
       rows.push({ year: y, choice: c, made, back, profit, cash, trailed, trail, rmade, rback, rprofit, rcash: rprofit === null ? null : rcash, rivalBust: rivalBust === y });
       if (cash < 0) { ending = { kind: 'bust', year: y, at: i }; break; }
@@ -51,7 +69,6 @@
     }
     return { rows, ending, rivalBust };
   }
-
   const NAME = { S: 'Strict', N: 'Normal', L: 'Loose' };
   const OPTS = [
     ['S', 'Strict', 'Proof of income and 20% down. Fannie Mae and Freddie Mac buy these loans.'],
@@ -233,11 +250,11 @@
   const plain = (s) => String(s).replace(/<[^>]+>/g, '');
 
   function judgeGame(t, e) {
-    const seq = String(e.value || '').trim().toUpperCase();
-    if (!seq) return { ok: false, msg: 'Play until the game ends. Either ending completes this step.' };
-    const sim = gameSim(seq);
+    const g = parseGame(e.value);
+    if (!g.seq) return { ok: false, msg: 'Play until the game ends. Either ending completes this step.' };
+    const sim = gameSim(g.seq, g.v);
     if (sim.bad || !sim.ending) return { ok: false, msg: 'Play until the game ends. Either ending completes this step.' };
-    if (sim.ending.at !== seq.length - 1) return { ok: false, msg: 'That game ended earlier. Play it again.' };
+    if (sim.ending.at !== g.seq.length - 1) return { ok: false, msg: 'That game ended earlier. Play it again.' };
     return { ok: true };
   }
   function judgeDrop(t, e) {
@@ -376,7 +393,7 @@
   }
 
   root.DESK = {
-    app: 'finan3-w06-mortgage-desk', version: 1, seedVersion: 1, salt: 'rize-finan3-w06-mortgage:da6f1e', points: 60,
+    app: 'finan3-w06-mortgage-desk', version: 2, seedVersion: 1, salt: 'rize-finan3-w06-mortgage:da6f1e', points: 60,
     storageKey: 'rize-finan3-w06-mortgage-machine-v2', filePrefix: 'MortgageMachine',
     verifyUrl: 'https://rizecomputerscience.github.io/finan3-mortgage-desk/verify.html',
     calcHint: '',
@@ -386,7 +403,7 @@
     note: { title: 'Memo to the board', label: 'Your memo', minWords: 40, receiptHeading: 'Memo to the board: what went wrong, and whose fault was it?',
       prompt: 'Write a memo to your board in two short paragraphs, at most 120 words in all. First, say what went wrong at your company. Second, say whose fault it was: yours, the borrowers’, Wall Street’s, the ratings agencies’ or the government’s and regulators’. Give a reason that names what someone was paid for or was supposed to check.' },
     // Shared with the page and the tests.
-    payment, TABLE, RATES, gameSim, YEARS, PROFIT, BACK, START_CASH, ENDINGS, NEWS, LOSERS, OPTS, NAME, AFTER, EVENTS, EVENT_SHOWN, PLAYERS, PAYS, linesFor,
+    payment, TABLE, RATES, gameSim, parseGame, VARIANTS, PARAMS, YEARS, PROFIT, BACK, START_CASH, ENDINGS, NEWS, LOSERS, OPTS, NAME, AFTER, EVENTS, EVENT_SHOWN, PLAYERS, PAYS, linesFor,
     LINES, EXAMPLES, EX, PROBLEM, Q1_POS, Q2_DROP, schedule, diagFor, fmt: { mm, pc, fix, r2, SHOW, PARSE, TOL, UNREADABLE },
   };
 })(typeof window !== 'undefined' ? window : globalThis);
