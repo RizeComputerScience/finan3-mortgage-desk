@@ -267,10 +267,10 @@
     2007: ['wallst', 'We’ve stopped buying loans nobody checked. And the ones you sold us that failed in their first months? Our contract says they come back to you.'],
   };
   const APP = {
-    2004: { who: 'Tom and Ana Rivera', role: 'couple', ask: 'Pay stubs show $6,000 a month. They saved $20,000: 10% of the $200,000 price (0.10 × $200,000). Every bill paid on time.', S: '10% down, not 20%. No loan.', N: 'Proof of income, 10% down, a good record. Approved.', L: 'Approved.' },
+    2004: { who: 'Tom and Ana Rivera', role: 'couple', ask: 'They earn $6,000 a month, and their pay stubs prove it. They saved $20,000: 10% of the $200,000 price (0.10 × $200,000). Every bill paid on time.', S: '10% down, not 20%. No loan.', N: 'Proof of income, 10% down, a good record. Approved.', L: 'Approved.' },
     2005: { who: 'Mark Dunn, who owns a restaurant', role: 'person', ask: 'Says he earns $9,000 a month; no pay stubs. Saved nothing. Missed two car payments last year.', S: 'No proof of income. No loan.', N: 'No proof of income. No loan.', L: 'Approved on his word.' },
-    2006: { who: 'Keisha Brown, a teacher', role: 'person', ask: 'Pay stubs show $4,000 a month. Every bill paid on time. Wants a $350,000 house; saved nothing.', S: 'No down payment. No loan.', N: 'No down payment. No loan.', L: 'Approved with nothing down.' },
-    2007: { who: 'Paul and Lena Novak', role: 'family', ask: 'Pay stubs show $7,000 a month. Saved $50,000: 20% of a $250,000 price. Every bill paid on time.', S: 'Proof, 20% down, a good record. Approved.', N: 'Proof, 20% down, a good record. Approved.', L: 'Approved, along with everyone else.' },
+    2006: { who: 'Keisha Brown, a teacher', role: 'person', ask: 'She earns $4,000 a month, and her pay stubs prove it. Every bill paid on time. Wants a $350,000 house; saved nothing.', S: 'No down payment. No loan.', N: 'No down payment. No loan.', L: 'Approved with nothing down.' },
+    2007: { who: 'Paul and Lena Novak', role: 'family', ask: 'They earn $7,000 a month, and their pay stubs prove it. Saved $50,000: 20% of a $250,000 price. Every bill paid on time.', S: 'Proof, 20% down, a good record. Approved.', N: 'Proof, 20% down, a good record. Approved.', L: 'Approved, along with everyone else.' },
   };
   const card = (who, line, extra) => `<div class="pcard">${A.portrait(who[0], 60)}<div><p class="pwho">${esc(who[1])}</p><p class="pline">${line}</p>${extra || ''}</div></div>`;
   const M$ = (x) => (x < 0 ? '−$' : '$') + Math.abs(x) + ' million';
