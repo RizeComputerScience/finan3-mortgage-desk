@@ -49,7 +49,7 @@ for (let i = 0; i < 4000; i++) {
 console.log(`swap caught ${caught} of ${swaps}`);
 chk(D.STEPS.every((s) => s.kind !== 'task') || caught >= 0.85 * swaps, `a receipt moved to another desk code still verifies in full too often (${swaps - caught} of ${swaps}); seed more variety`);
 chk(codes.size > 3990, 'desk codes repeat too often: ' + codes.size);
-chk(/^https:\/\/rizecomputerscience\.github\.io\/finan3-[a-z0-9-]+-desk\/verify\.html$/.test(C.verifyUrl), 'verifyUrl ' + C.verifyUrl);
+chk(C.verifyUrl === 'https://rizecomputerscience.github.io/finan3-mortgage-desk/v2/verify.html', 'verifyUrl is v2\'s checker: ' + C.verifyUrl);
 chk(!C.calcHint, 'calcHint must be empty (rule 33)');
 for (const q of C.quiz) chk(q.options.length === 4 && q.why.length === 4 && !BANNED.test(JSON.stringify(q)), 'quiz ' + q.title);
 chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.stringify(C.story) + JSON.stringify(C.note)), 'FINAN III has no exams: remove "exam" from the desk copy');
@@ -116,48 +116,43 @@ chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.
   // 9. Who is left holding it: the investor.
   lesson(/pension fund that owns the bond/.test(quizRight(1)), 'step 9: the bond owner loses');
 
-  // 10. THE GAME. Enumerate all 3^7 = 2,187 strategies.
+  // 10. THE GAME (round 3: four years, 2004 to 2007). Enumerate all 3^4 = 81 strategies.
   const G = C.gameSim, Y = C.YEARS, ends = { fired: 0, bust: 0 }, byYear = {};
-  for (let i = 0; i < 5; i++) {   // loose out-earns strict and normal every year before 2007
-    lesson(C.PROFIT.L[i] > C.PROFIT.N[i] && C.PROFIT.N[i] > C.PROFIT.S[i], `step 10: loose earns most in ${Y[i]}`);
-  }
-  let all = 0;
-  const T10 = task('K', 'game');
-  for (let n = 0; n < 2187; n++) {
-    let x = n, seq = ''; for (let k = 0; k < 7; k++) { seq += 'SNL'[x % 3]; x = Math.floor(x / 3); }
+  lesson(Y.join() === '2004,2005,2006,2007', 'step 10: the game runs 2004 to 2007');
+  for (let i = 0; i < 3; i++) lesson(C.PROFIT.L[i] > C.PROFIT.N[i] && C.PROFIT.N[i] > C.PROFIT.S[i], `step 10: loose earns most in ${Y[i]}`);
+  lesson(JSON.stringify(C.PROFIT) === JSON.stringify({ S: [6, 5, 4, 5], N: [14, 12, 10, 8], L: [32, 40, 40, -30] }) && C.BACK[2005] === 120 && C.BACK[2006] === 130, 'step 10: the fees and buybacks are version 1\'s figures for 2004 to 2007');
+  let all = 0; const T10 = task('K', 'game');
+  for (let n = 0; n < 81; n++) {
+    let x = n, seq = ''; for (let k = 0; k < 4; k++) { seq += 'SNL'[x % 3]; x = Math.floor(x / 3); }
     const s = G(seq); all++;
-    lesson(!!s.ending && (s.ending.kind === 'fired' || s.ending.kind === 'bust'), `step 10: ${seq} ends in one of the two bad endings`);
+    lesson(!!s.ending && (s.ending.kind === 'fired' || s.ending.kind === 'bust'), `step 10: ${seq} ends in one of the two bad endings (no winning path)`);
     if (!s.ending) continue;
     ends[s.ending.kind]++; byYear[s.ending.kind + s.ending.year] = (byYear[s.ending.kind + s.ending.year] || 0) + 1;
-    // every year played before 2007: the rival (always loose) earns at least as much as you, and strictly more unless you were loose
     s.rows.filter((r) => r.year < 2007).forEach((r) => lesson(r.rprofit > r.profit || (r.choice === 'L' && r.rprofit === r.profit), `step 10: ${seq} ${r.year} the rival out-earns any non-loose choice`));
-    // fired only after two years running behind the rival, and only before 2007; bankrupt only when cash runs out
     if (s.ending.kind === 'fired') lesson(s.ending.year <= 2006 && s.rows.slice(-2).every((r) => r.choice !== 'L'), `step 10: ${seq} fired after two non-loose years`);
-    if (s.ending.kind === 'bust') lesson(s.ending.year >= 2007 && s.rows[s.rows.length - 1].cash < 0, `step 10: ${seq} bankrupt when cash runs out`);
-    // the step accepts exactly the played prefix, from any desk code, and the receipt verifies at full points from this ending
-    const played = seq.slice(0, s.ending.at + 1);
+    if (s.ending.kind === 'bust') lesson(s.ending.year === 2007 && s.rows[s.rows.length - 1].cash < 0, `step 10: ${seq} bankrupt in 2007 when cash runs out`);
+    // A fired player watches the rival's company from the inside to the crash: the rival, loose every year, is bankrupt in 2007.
+    if (s.ending.kind === 'fired') { const r = G('LLLL'); lesson(r.rivalBust === 2007 && r.rows.length === 4 && r.ending.kind === 'bust' && r.ending.year === 2007, `step 10: ${seq} fired in ${s.ending.year}, then sees the rival reach the crash`); }
+    const played = 'g4:' + seq.slice(0, s.ending.at + 1);
     lesson(C.judgeTask(T10, { value: played }, h).ok, `step 10: ${played} completes the step`);
-    if (played.length < 7) lesson(!C.judgeTask(T10, { value: seq }, h).ok, `step 10: ${seq} rejected past its ending`);
-    if (played.length > 1) lesson(!C.judgeTask(T10, { value: played.slice(0, -1) }, h).ok, `step 10: ${played.slice(0, -1)} (unfinished) rejected`);
+    if (s.ending.at < 3) lesson(!C.judgeTask(T10, { value: 'g4:' + seq }, h).ok, `step 10: ${seq} rejected past its ending`);
+    if (s.ending.at > 0) lesson(!C.judgeTask(T10, { value: played.slice(0, -1) }, h).ok, `step 10: ${played.slice(0, -1)} (unfinished) rejected`);
   }
-  // Distinct games (finance review 18): plans that end early repeat the same game, so count played prefixes.
-  const games = new Map(); for (let n = 0; n < 2187; n++) { let x = n, q = ''; for (let k = 0; k < 7; k++) { q += 'SNL'[x % 3]; x = Math.floor(x / 3); } const g = G(q); games.set(q.slice(0, g.ending.at + 1), g.ending.kind); }
+  const games = new Map(); for (let n = 0; n < 81; n++) { let x = n, q = ''; for (let k = 0; k < 4; k++) { q += 'SNL'[x % 3]; x = Math.floor(x / 3); } const g = G(q); games.set(q.slice(0, g.ending.at + 1), g.ending.kind); }
   const gk = [...games.values()]; console.log(`distinct games ${games.size}: fired ${gk.filter((k) => k === 'fired').length}, bankrupt ${gk.filter((k) => k === 'bust').length}`);
-  lesson(games.size === 263 && gk.filter((k) => k === 'fired').length === 40 && gk.filter((k) => k === 'bust').length === 223, 'step 10: 263 distinct games, 40 fired, 223 bankrupt (INSTRUCTOR.md)');
-  lesson(all === 2187 && ends.fired + ends.bust === 2187 && ends.fired > 0 && ends.bust > 0, `step 10: both endings reachable (${JSON.stringify(ends)})`);
-  lesson(G('LLLLLLL').ending.kind === 'bust' && G('LLLLLLL').ending.year === 2007, 'step 10: all-loose goes bankrupt in 2007');
-  lesson(G('SS').ending.kind === 'fired' && G('SS').ending.year === 2003, 'step 10: strict two years running is fired in 2003');
-  lesson(G('LLLLLLL').rivalBust === 2007, 'step 10: the rival goes bankrupt in 2007');
+  lesson(all === 81 && ends.fired > 0 && ends.bust > 0, `step 10: both endings reachable (${JSON.stringify(ends)})`);
+  lesson(G('LLLL').ending.kind === 'bust' && G('LLLL').ending.year === 2007, 'step 10: all-loose goes bankrupt in 2007');
+  lesson(G('SS').ending.kind === 'fired' && G('SS').ending.year === 2005, 'step 10: strict two years running is fired in 2005');
+  lesson(G('LLLL').rivalBust === 2007, 'step 10: the rival goes bankrupt in 2007');
   console.log('game endings by year', JSON.stringify(byYear));
-  // Both endings explain themselves in two or three sentences that point at incentives (who was paid for what).
-  for (const k of ['fired', 'bust']) for (const yy of [2003, 2006, 2007, 2008]) {
+  for (const k of ['fired', 'bust']) for (const yy of [2005, 2006, 2007]) {
     const E = C.ENDINGS[k](yy), n = (E.text.match(/[.!?](\s|$)/g) || []).length;
-    // Lead ruling 2026-11-17 (finance review 7): the fired ending gains one sentence, that some real lenders kept their standards and survived.
     lesson(n >= 2 && n <= (k === 'fired' ? 4 : 3), `step 10: ${k} ending has 2 or 3 sentences, plus the survivors sentence when fired (${n})`);
     if (k === 'fired') lesson(/kept their standards and survived/.test(E.text), 'step 10: fired ending says some real lenders survived');
     lesson(/\bpaid\b/.test(E.text) && /\bchecking\b/.test(E.text) && /Wall Street/.test(E.text), `step 10: ${k} ending points at incentives`);
     lesson(E.text.split(/\s+/).length <= (k === 'fired' ? 95 : 75), `step 10: ${k} ending is short`);
   }
+
   // Few words per screen: each year's news is at most 35 words; each option at most 14.
   Y.forEach((y) => lesson(C.NEWS[y].split(/\s+/).length <= 35, `step 10: news for ${y} is short`));
   C.OPTS.forEach((o) => lesson(o[2].split(/\s+/).length <= 14, `step 10: option ${o[1]} is short`));
@@ -176,11 +171,11 @@ chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.
   };
   for (let i = 0; i < 40; i++) {
     const code = h.newCode();
-    for (const seq of ['SS', 'NS', 'LSN', 'LLLLNNN', 'LNLNLNN', 'LLLLLL', 'SLSLSS', 'NLNLNNN']) {
+    for (const seq of ['g4:SS', 'g4:NS', 'g4:LSN', 'g4:LLLL', 'g4:LNLN', 'g4:SLSL', 'g4:NLNS', 'g4:LLNN']) {
       const v = play(code, seq);
-      chk(v.points === D.POINTS && v.done === D.STEPS.length, `STRATEGY game ${seq} (${G(seq).ending && G(seq).ending.kind}) earns full points`);
+      chk(v.points === D.POINTS && v.done === D.STEPS.length, `STRATEGY game ${seq} (${G(seq.slice(3)).ending && G(seq.slice(3)).ending.kind}) earns full points`);
     }
-    const unfinished = play(code, 'LLL');
+    const unfinished = play(code, 'g4:LLL');
     chk(unfinished.done === D.STEPS.length - 1, 'STRATEGY an unfinished game leaves only that step open');
   }
   console.log('strategies: every finished game, fired or bankrupt, earns full points; an unfinished game does not complete its step');
@@ -191,8 +186,8 @@ chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.
   let v2 = 0; const ok = (c, m) => { chk(c, 'V2 ' + m); if (c) v2++; };
   // Same step ids and kinds as v1 (so receipts carry the same information); the story runs house, machine, lender.
   ok(D.STEPS.map((s) => s.id).sort().join() === ['q1', 'loan', 'pay', 'first', 'total', 'lockin', 'chain', 'paid', 'q2', 'game', 'note'].sort().join(), 'step ids are v1\'s');
-  ok(D.STEPS.map((s) => s.id).join() === 'game,chain,paid,q1,q2,note,loan,pay,first,total,lockin', 'v2 step order: the game first');
-  ok(C.app === 'finan3-w06-mortgage-desk' && C.version === 2 && C.seedVersion === 1 && C.salt === 'rize-finan3-w06-mortgage:da6f1e', 'receipt identity: v1 app, seeds and salt; version 2 (the game value carries its variant)');
+  ok(D.STEPS.map((s) => s.id).join() === 'loan,pay,first,total,chain,q1,paid,q2,lockin,game,note', 'round 3 order: the family\'s loan first, the game and memo last');
+  ok(C.app === 'finan3-w06-mortgage-desk' && C.version === 3 && C.seedVersion === 1 && C.salt === 'rize-finan3-w06-mortgage:da6f1e', 'receipt identity: v1 app, seeds and salt; version 3 (the four-year game)');
   // Every step has a problem statement under the word limit, with no NaN, for many codes.
   for (let i = 0; i < 200; i++) { const T = D.buildTasks('W' + i); for (const s of D.STEPS) { const P = C.PROBLEM[s.id](T.find((x) => x.id === s.id) || {}); const w = P.body.replace(/<[^>]+>/g, '').split(/\s+/).length; ok(w <= 45 && !/NaN|undefined/.test(P.place + P.body), `problem text for ${s.id} (${w} words)`); } }
   // The gestures map onto v1's answer indices: only "price tag down" and "drop on the fund" pass.
@@ -212,28 +207,9 @@ chk(!/\bexams?\b/i.test(JSON.stringify(C.quiz) + JSON.stringify(C.steps) + JSON.
   const V = W.HPI.values, peak = V.indexOf(Math.max(...V));
   ok(V.length === 156 && V[0] === 100 && peak > 72 && peak < 96 && Math.min(...V.slice(peak)) < V[peak] * 0.8, `price series climbs then falls more than 20% (peak index ${peak}, ${V[peak]})`);
   // The loose dial setting always shows the rival's fee (the rival is always loose), so the dilemma on screen is exact.
-  ok(C.gameSim('LLLLLLL').rows.every((r, i) => r.rmade === C.PROFIT.L[i]), 'dial fees: the rival earns the loose figure every year it is open');
+  ok(C.gameSim('LLLL').rows.every((r, i) => r.rmade === C.PROFIT.L[i]), 'choice cards: the rival earns the loose figure every year');
 
-  // Every variant of the game keeps version 1's reviewed design (proved over all 2,187 plans each).
-  ok(JSON.stringify(C.PARAMS[0].PROFIT) === JSON.stringify(C.PROFIT) && JSON.stringify(C.PARAMS[0].BACK) === JSON.stringify(C.BACK) && C.VARIANTS[0].T === 0 && !C.VARIANTS[0].late, 'variant 0 is version 1\'s game exactly');
-  const T10 = D.buildTasks('VAR').find((x) => x.id === 'game');
-  C.VARIANTS.forEach((V, vi) => {
-    const P = C.PARAMS[vi]; let fired = 0, bust = 0, bad = 0;
-    for (let i = 0; i < 5; i++) ok(P.PROFIT.L[i] > P.PROFIT.N[i] && P.PROFIT.N[i] > P.PROFIT.S[i], `variant ${vi}: loose earns most in ${C.YEARS[i]}`);
-    for (let n = 0; n < 2187; n++) {
-      let x = n, q = ''; for (let k = 0; k < 7; k++) { q += 'SNL'[x % 3]; x = Math.floor(x / 3); }
-      const g = C.gameSim(q, vi); if (!g.ending) { bad++; continue; }
-      if (g.ending.kind === 'fired') { fired++; if (!(g.ending.year <= 2006 && g.rows.slice(-2).every((r) => r.choice !== 'L'))) bad++; } else { bust++; if (!(g.ending.year >= 2007)) bad++; }
-      g.rows.filter((r) => r.year < 2007).forEach((r) => { if (!(r.rprofit > r.profit || (r.choice === 'L' && r.rprofit === r.profit))) bad++; });
-      const played = q.slice(0, g.ending.at + 1);
-      if (!C.judgeTask(T10, { value: vi + ':' + played }, h).ok) bad++;
-      if (played.length > 1 && C.judgeTask(T10, { value: vi + ':' + played.slice(0, -1) }, h).ok) bad++;
-    }
-    ok(bad === 0 && fired > 0 && bust > 0, `variant ${vi} ${JSON.stringify(V)}: no winning path, both endings (fired ${fired}, bankrupt ${bust}), step judged only when finished`);
-    const allL = C.gameSim('LLLLLLL', vi), ss = C.gameSim('SS', vi);
-    ok(allL.ending.kind === 'bust' && allL.ending.year === 2007 && allL.rivalBust === 2007 && ss.ending.kind === 'fired' && ss.ending.year === 2003, `variant ${vi}: all loose bankrupt in 2007 with the rival; strict twice fired in 2003`);
-  });
-  ok(C.judgeTask(T10, { value: 'LLLLLL' }, h).ok && !C.judgeTask(T10, { value: '99:LLLLLL' }, h).ok, 'a bare v1 sequence is variant 0; an unknown variant is rejected');
+  ok(!C.judgeTask(D.buildTasks('Z').find((x) => x.id === 'game'), { value: 'LLLLLL' }, h).ok, 'a version 1 seven-year game value does not complete the round 3 step');
   console.log(`v2 checks passed: ${v2}`);
 }
 console.log(bad ? `FAIL ${bad}` : 'PASS');

@@ -1,9 +1,9 @@
-/* The Mortgage Machine: FINAN III Unit 6 (mortgages and 2008), version 2 of The Mortgage Desk.
+/* The Mortgage Machine: FINAN III Unit 6 (mortgages and 2008), version 2 of The Mortgage Desk (round 3, 2026-11-19).
    The rules: every number, judge, diagnosis, help line, praise line and the lender's game are version 1's
    (../../../w06/desk/config.js, reviewed twice; copied verbatim below, HTML builders removed). What is new here:
    the step order (the story now runs left to right along the machine), plain-text problem statements for the new
    screens, the amortization schedule the house's 30-year track draws, and the gesture-to-answer maps for the two checks.
-   app, seedVersion and salt are v1's; version is 2 because a saved game now carries its variant ("v:SEQ"). v2's verify.html
+   app, seedVersion and salt are v1's; version is 3 (round 3: the four-year game, saved as "g4:SEQ"). v2 verify.html
    checks both versions (it loads v1's config as js/rules-v1.js for version 1 receipts).
    No DOM here; Node loads it for the tests and verify.html loads it with DESK_NO_UI. */
 (function (root) {
@@ -14,54 +14,36 @@
   const RATES = [0.03, 0.04, 0.05, 0.06, 0.065, 0.07, 0.08];
   const TABLE = {}; RATES.forEach((r) => { TABLE[r] = Math.round(payment(100000, r) * 100) / 100; });   // per $100,000, 30 years
 
-  // ---------------- the lender's game (step 10) ----------------
-  // Seven yearly turns. Each year you set standards: S (strict), N (normal) or L (loose). The rival is loose every year.
-  // Profit in millions of dollars from that year's new loans. Loose earns the most every year from 2002 to 2006.
-  // In 2007 Wall Street stops buying loose loans: a loose year then means loans nobody buys.
-  const YEARS = [2002, 2003, 2004, 2005, 2006, 2007, 2008];
-  const PROFIT = { S: [8, 8, 6, 5, 4, 5, 4], N: [12, 14, 14, 12, 10, 8, 6], L: [15, 22, 32, 40, 40, -30, -30] };
-  // Bad loans sent back (millions) for each loose year: the 2005 and 2006 loans come back in 2007, older ones in 2008.
-  const BACK = { 2002: 10, 2003: 30, 2004: 70, 2005: 120, 2006: 130 };
+  // ---------------- the lender's game (round 3: one short game late in the tool) ----------------
+  // Four years, 2004 to 2007, one choice a year: S (strict), N (normal) or L (loose). The rival is loose every year.
+  // The fees are version 1's figures for these years; loose loans made in 2005 and 2006 come back in 2007 (v1's buybacks).
+  // Start cash of $20 million is the largest round figure for which no plan survives (searched; tests/core_test.js re-proves
+  // it over all 81 plans). Falling behind the rival two years running gets you fired (possible after 2005 or 2006); a fired
+  // player then watches the rival's company, which stays loose, through 2007.
+  const YEARS = [2004, 2005, 2006, 2007];
+  const PROFIT = { S: [6, 5, 4, 5], N: [14, 12, 10, 8], L: [32, 40, 40, -30] };
+  const BACK = { 2005: 120, 2006: 130 };
   const START_CASH = 20;
-  // ---- Version 2: each play varies, honestly (owner's notes, 2026-11-18) ----
-  // Variant 0 is version 1's game exactly. The others change how big the boom is (g: the rival's and your loose profits),
-  // how much bad loans cost when they come back (b: buybacks grow with the boom), how patient the board is (T: the rival
-  // may beat you by up to $T million a year before it counts as falling behind), and when in 2007 buyers stop (early: you
-  // are stuck with all of 2007's loose loans; late: half of them sell first). Only combinations for which every v1 property
-  // holds over all 2,187 plans are listed (tests/core_test.js re-proves each one): no winning path, both endings, loose
-  // out-earns normal and strict every year 2002 to 2006, all-loose is bankrupt in 2007, strict twice is fired in 2003, the
-  // rival goes bankrupt in 2007. A bigger boom without bigger buybacks lets a player win, so they move together.
-  const VARIANTS = [];
-  [[1, 1], [0.9, 1], [1.15, 1.2], [1.3, 1.2]].forEach(([g, b]) => [0, 3].forEach((T) => [false, true].forEach((late) => VARIANTS.push({ g, b, T, late }))));
-  const PARAMS = VARIANTS.map((v) => ({ v,
-    PROFIT: { S: PROFIT.S, N: PROFIT.N, L: PROFIT.L.slice(0, 5).map((x) => Math.round(x * v.g)).concat(v.late ? [-15, -15] : [-30, -30]) },
-    BACK: Object.fromEntries(Object.entries(BACK).map(([k, x]) => [k, Math.round(x * v.b)])) }));
-  function backIn(year, seq, P) {
-    const BK = (P || PARAMS[0]).BACK; let b = 0;
-    for (let j = 0; j < seq.length && YEARS[j] < year; j++) {
-      if (seq[j] !== 'L') continue;
-      if (year === 2007 && YEARS[j] >= 2005) b += BK[YEARS[j]];
-      if (year === 2008 && YEARS[j] <= 2004) b += BK[YEARS[j]];
-    }
+  function backIn(year, seq) {
+    let b = 0;
+    for (let j = 0; j < seq.length && YEARS[j] < year; j++) if (seq[j] === 'L' && year === 2007 && BACK[YEARS[j]]) b += BACK[YEARS[j]];
     return b;
   }
-  // A saved game is "v:SEQ" (v = variant number) or, as in version 1, a bare SEQ (variant 0).
-  const parseGame = (val) => { const m = /^(\d+):([A-Z]*)$/.exec(String(val || '').trim().toUpperCase()); return m ? { v: Number(m[1]), seq: m[2] } : { v: 0, seq: String(val || '').trim().toUpperCase() }; };
+  // A saved game is "g4:" followed by your choices (version 1's seven-year game used a bare sequence).
+  const parseGame = (val) => { const m = /^G4:([A-Z]*)$/.exec(String(val || '').trim().toUpperCase()); return m ? { seq: m[1] } : { seq: null }; };
   // Plays a sequence of choices for you and the always-loose rival. Stops at the first ending.
-  function gameSim(seq, vi) {
+  function gameSim(seq) {
     seq = String(seq || '');
-    const P = PARAMS[vi || 0]; if (!P) return { rows: [], ending: null, bad: true };
-    const PR = P.PROFIT, T = P.v.T;
     const rows = []; let cash = START_CASH, rcash = START_CASH, trail = 0, ending = null, rivalBust = null;
-    const rseq = 'LLLLLLL';
+    const rseq = 'LLLL';
     for (let i = 0; i < seq.length && i < YEARS.length; i++) {
       const y = YEARS[i], c = seq[i];
       if (!'SNL'.includes(c)) return { rows, ending: null, bad: true };
-      const made = PR[c][i], back = backIn(y, seq, P), profit = made - back;
+      const made = PROFIT[c][i], back = backIn(y, seq), profit = made - back;
       let rmade = null, rback = null, rprofit = null;
-      if (rivalBust === null) { rmade = PR.L[i]; rback = backIn(y, rseq, P); rprofit = rmade - rback; rcash += rprofit; if (rcash < 0) rivalBust = y; }
+      if (rivalBust === null) { rmade = PROFIT.L[i]; rback = backIn(y, rseq); rprofit = rmade - rback; rcash += rprofit; if (rcash < 0) rivalBust = y; }
       cash += profit;
-      const trailed = rprofit !== null && rprofit - profit > T;
+      const trailed = rprofit !== null && profit < rprofit;
       trail = trailed ? trail + 1 : 0;
       rows.push({ year: y, choice: c, made, back, profit, cash, trailed, trail, rmade, rback, rprofit, rcash: rprofit === null ? null : rcash, rivalBust: rivalBust === y });
       if (cash < 0) { ending = { kind: 'bust', year: y, at: i }; break; }
@@ -137,7 +119,7 @@
     'A pension fund buys a bond and collects its share of the families’ payments.'];
   const EVENT_SHOWN = [3, 0, 4, 2, 1];           // row i shows EVENTS[EVENT_SHOWN[i]]; its right answer is EVENT_SHOWN[i] + 1
   // Step 8: each player in the chain and how it gets paid.
-  const PLAYERS = ['Mortgage broker', 'Lender', 'Wall Street bank', 'Ratings agency', 'Pension fund that buys a bond'];
+  const PLAYERS = ['Mortgage broker', 'Lender', 'Investment bank', 'Ratings agency', 'Pension fund that buys a bond'];
   const PAYS = [   // option letter, text, the player it belongs to (index into PLAYERS)
     ['a', 'The family’s payments, for as long as the family pays', 4],
     ['b', 'A fee for each family it brings to a lender', 0],
@@ -190,7 +172,7 @@
       { label: 'Price of the house', calc: 'agreed with the seller', num: mm(P), kind: 'text' },
       { label: 'Down payment', calc: faded ? `${pc(d)} × ${mm(P)}` : 'down payment share × price', num: P * d, kind: 'money', input: true },
       { label: 'Loan', calc: faded ? `${mm(P)} − down payment` : 'price − down payment', num: P * (1 - d), kind: 'money', input: true },
-      { label: 'Loan-to-value (LTV)', calc: faded ? `loan ÷ ${mm(P)}` : 'loan ÷ price', num: 1 - d, kind: 'pct', input: true }],
+      { label: 'Loan-to-value ratio (LTV)', calc: faded ? `loan ÷ ${mm(P)}` : 'loan ÷ price', num: 1 - d, kind: 'pct', input: true }],
     pay: (L, r, faded) => [
       { label: 'Loan', calc: 'from the last step', num: mm(L), kind: 'text' },
       { label: 'Loan in $100,000s', calc: faded ? `${mm(L)} ÷ $100,000` : 'loan ÷ $100,000', num: L / 100000, kind: 'num', input: true },
@@ -252,7 +234,7 @@
   function judgeGame(t, e) {
     const g = parseGame(e.value);
     if (!g.seq) return { ok: false, msg: 'Play until the game ends. Either ending completes this step.' };
-    const sim = gameSim(g.seq, g.v);
+    const sim = gameSim(g.seq);
     if (sim.bad || !sim.ending) return { ok: false, msg: 'Play until the game ends. Either ending completes this step.' };
     if (sim.ending.at !== g.seq.length - 1) return { ok: false, msg: 'That game ended earlier. Play it again.' };
     return { ok: true };
@@ -315,35 +297,35 @@
   }
   const fmtIn = (l, x) => (l.kind === 'pct' ? fix(x * 100, 3) + '%' : String(Math.round(x * 1000) / 1000));
   function selfAnswer(t) {
-    if (t.id === 'game') return { value: 'LLLLLL', choice: null, rows: null };
+    if (t.id === 'game') return { value: 'g4:LLLL', choice: null, rows: null };
     if (t.id === 'chain' || t.id === 'paid') return { rows: t.answer.map(String), choice: null };
     const rows = []; linesFor(t).forEach((l, i) => { if (l.input) rows[i] = fmtIn(l, l.num); });
     return { rows, choice: t.decision || null };
   }
   function selfWrong(t) {
-    if (t.id === 'game') return { value: 'LL', choice: null, rows: null };
+    if (t.id === 'game') return { value: 'g4:LL', choice: null, rows: null };
     if (t.id === 'chain') return { rows: ['1', '2', '3', '4', '5'], choice: null };
     if (t.id === 'paid') return { rows: ['a', 'b', 'c', 'd', 'e'], choice: null };
     const rows = []; linesFor(t).forEach((l, i) => { if (l.input) rows[i] = fmtIn(l, l.num * 1.3); });
     return { rows, choice: t.decision || null };
   }
   // ---------------- version 2 additions ----------------
-  // Step order (owner's direction, 2026-11-18): the game first, then what just happened (the machine and the memo), then
-  // what one loan costs a family. Ids and kinds are v1's, so receipts carry the same information.
+  // Step order (owner's direction, 2026-11-19, rules 60 and 61): one family's loan first; then how the loan is sold and
+  // becomes part of a bond; who is paid and who loses; lock-in; then the short lender game and the memo. Ids are v1's.
   const STEPS = [
-    { id: 'game', label: 'The lender’s game', kind: 'task', act: 0 },
+    { id: 'loan', label: 'The family’s loan', kind: 'task', act: 0 },
+    { id: 'pay', label: 'The monthly payment', kind: 'task', act: 0 },
+    { id: 'first', label: 'The first payment', kind: 'task', act: 0 },
+    { id: 'total', label: 'Thirty years', kind: 'task', act: 0 },
     { id: 'chain', label: 'A loan’s life', kind: 'task', act: 1 },
-    { id: 'paid', label: 'Who gets paid', kind: 'task', act: 1 },
     { id: 'q1', label: 'A bond made of mortgages', kind: 'check', quiz: 0, act: 1 },
+    { id: 'paid', label: 'Who gets paid', kind: 'task', act: 1 },
     { id: 'q2', label: 'Who is left holding it?', kind: 'check', quiz: 1, act: 1 },
-    { id: 'note', label: 'Memo to the board', kind: 'note', act: 1 },
-    { id: 'loan', label: 'The family’s loan', kind: 'task', act: 2 },
-    { id: 'pay', label: 'The monthly payment', kind: 'task', act: 2 },
-    { id: 'first', label: 'The first payment', kind: 'task', act: 2 },
-    { id: 'total', label: 'Thirty years', kind: 'task', act: 2 },
     { id: 'lockin', label: 'Locked in', kind: 'task', act: 2 },
+    { id: 'game', label: 'Run a lender, 2004 to 2007', kind: 'task', act: 3 },
+    { id: 'note', label: 'Memo to the board', kind: 'note', act: 3 },
   ];
-  const ACTS = ['Run the lender', 'What just happened', 'What one loan costs'];
+  const ACTS = ['One family’s loan', 'How the loan is sold', 'Rates later on', 'Your company'];
 
   // What each screen asks, in a sentence or two (rule 28: nothing above the first control runs past about 40 words).
   // Steps 2 to 6 keep v1's wording; the rest say what to do with the new controls.
@@ -362,13 +344,13 @@
       body: 'Put five events from the life of one family’s loan in order. Drop each event into a bay on the line, the first on the left.' }),
     paid: () => ({ place: 'Everyone along the way takes a slice.',
       body: 'Hang each way of being paid on the player it belongs to. Watch <b>when</b> each one is paid.' }),
-    q1: () => ({ place: 'At the far end of the line, investors own the bonds.',
-      body: 'A pension fund owns a mortgage-backed bond, a bond whose payments come from thousands of home loans. Rates on new bonds rise. Drag the price tag to show what happens to the price of the bond it owns.' }),
+    q1: () => ({ place: 'A pension fund owns one of these bonds.',
+      body: 'Its payments come from thousands of home loans and never change. Then rates on new bonds rise. What happens to the price of the bond the fund owns?' }),
     q2: () => ({ place: 'Three years later, one family stops paying.',
       body: 'The loan sits in a bond that Wall Street sold with no guarantee. Drag the missed payment onto whoever loses money.' }),
-    game: () => ({ place: 'You run a mortgage lender from 2002 to 2008.',
+    game: () => ({ place: 'You run a mortgage lender from 2004 to 2007.',
       body: 'Each year you set your lending standards. Your rival is loose every year, and your board compares your profit with your rival’s.' }),
-    note: () => ({ place: 'The game is over. Your board wants an explanation.', body: '' }),
+    note: () => ({ place: 'Your board wants an explanation.', body: '' }),
   };
 
   // The checks become gestures. Each gesture maps to one of v1's answer options, so the receipt stores the same index.
@@ -393,17 +375,17 @@
   }
 
   root.DESK = {
-    app: 'finan3-w06-mortgage-desk', version: 2, seedVersion: 1, salt: 'rize-finan3-w06-mortgage:da6f1e', points: 60,
+    app: 'finan3-w06-mortgage-desk', version: 3, seedVersion: 1, salt: 'rize-finan3-w06-mortgage:da6f1e', points: 60,
     storageKey: 'rize-finan3-w06-mortgage-machine-v2', filePrefix: 'MortgageMachine',
-    verifyUrl: 'https://rizecomputerscience.github.io/finan3-mortgage-desk/verify.html',
+    verifyUrl: 'https://rizecomputerscience.github.io/finan3-mortgage-desk/v2/verify.html',
     calcHint: '',
     story: { title: 'The Mortgage Machine', kicker: 'Financial Markets and Institutions, Unit 6', company: 'The Mortgage Machine', team: '',
-      dek: 'It is 2002, and you run a mortgage lender. You lend families money for homes, sell the loans, and get paid for every one. Your rival lends to almost anyone. How long can you last?' },
+      dek: 'Practice what you read in Who Owns Your House? and One Family’s Mortgage, in Numbers, one step at a time. You will work out one family’s loan, follow it as it is sold and turned into a bond, see who is paid and who loses when it goes bad, and then run a lender from 2004 to 2007.' },
     steps: STEPS, acts: ACTS, quiz: QUIZ, walk: null, buildTasks, judgeTask, helpText, praise, selfAnswer, selfWrong,
     note: { title: 'Memo to the board', label: 'Your memo', minWords: 40, receiptHeading: 'Memo to the board: what went wrong, and whose fault was it?',
       prompt: 'Write a memo to your board in two short paragraphs, at most 120 words in all. First, say what went wrong at your company. Second, say whose fault it was: yours, the borrowers’, Wall Street’s, the ratings agencies’ or the government’s and regulators’. Give a reason that names what someone was paid for or was supposed to check.' },
     // Shared with the page and the tests.
-    payment, TABLE, RATES, gameSim, parseGame, VARIANTS, PARAMS, YEARS, PROFIT, BACK, START_CASH, ENDINGS, NEWS, LOSERS, OPTS, NAME, AFTER, EVENTS, EVENT_SHOWN, PLAYERS, PAYS, linesFor,
+    payment, TABLE, RATES, gameSim, parseGame, YEARS, PROFIT, BACK, START_CASH, ENDINGS, NEWS, LOSERS, OPTS, NAME, AFTER, EVENTS, EVENT_SHOWN, PLAYERS, PAYS, linesFor,
     LINES, EXAMPLES, EX, PROBLEM, Q1_POS, Q2_DROP, schedule, diagFor, fmt: { mm, pc, fix, r2, SHOW, PARSE, TOL, UNREADABLE },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

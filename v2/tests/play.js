@@ -22,81 +22,81 @@ const fs = require('fs');
     const plan = await p.evaluate((c) => { const D = window.MM.D, C = window.DESK, h = window.DeskEngine.h, T = D.buildTasks(c);
       return Object.fromEntries(T.map((t) => [t.id, { good: C.selfAnswer(t, h), bad: C.selfWrong(t, h), answer: t.answer }])); }, code);
 
-    // ---- step 1: the game. First the walkthrough of one loan sold, then the years: choice card, the year runs, people react ----
-    for (let k = 0; k < 4; k++) { await p.click('#wNext'); await p.waitForTimeout(k === 1 ? 700 : 250); if (k === 1) await shot('01a-walkthrough'); }
-    const year = async (c, frames) => {
-      await p.click(`.ch3[data-c="${c}"]`);
-      if (frames) { for (let k = 0; k < frames; k++) { await p.waitForTimeout(380); await p.locator('.g2-stage').screenshot({ path: `${OUT}/frames/${tag}-${String(k).padStart(2, '0')}.png` }); } }
-      else { await p.waitForTimeout(150); await p.evaluate(() => window.MM.gameApi.skip()); }
-      await p.waitForSelector('#goOn', { timeout: 15000 });
+    const ids = await p.evaluate(() => window.MM.D.STEPS.map((x) => x.id));
+    const fillRows = async (a) => { for (let i = 0; i < a.rows.length; i++) if (a.rows[i] != null) await p.fill(`.rowin[data-row="${i}"]`, String(a.rows[i])); };
+    const STEP = {
+      // the family's loan and its numbers: wrong once, help, then right (the live check completes it); LTV once by dragging
+      async calc(id) {
+        if (id === 'loan') { const bx = await p.locator('#houseSvg').boundingBox(); await p.mouse.move(bx.x + bx.width * 0.45, bx.y + bx.height * 0.5); await p.mouse.down(); await p.mouse.move(bx.x + bx.width * 0.5, bx.y + bx.height * 0.5, { steps: 6 }); await p.mouse.up();
+          log(tag, 'loan LTV by drag ->', await p.inputValue('.rowin[data-row="3"]')); }
+        if (id === 'pay' && await p.$('.ratebtn')) { await p.click('.ratebtn >> nth=0'); log(tag, 'pay rate-card tap ->', await p.inputValue('.rowin[data-row="2"]')); }
+        await fillRows(plan[id].bad); if (plan[id].bad.choice) await p.check(`input[name=dec][value="${plan[id].bad.choice}"]`);
+        await p.click('#chkBtn'); await p.waitForTimeout(150); log(tag, id, 'wrong ->', (await fb()).slice(0, 100));
+        if (await p.$('#helpRow button[data-l="1"]')) await p.click('#helpRow button[data-l="1"]');
+        if (id === 'loan') await shot('loan-wrong');
+        await fillRows(plan[id].good); await p.waitForTimeout(900);
+        const f = await fb(); log(tag, id, 'right ->', f.slice(0, 100)); if (!/^Right/.test(f)) fails.push(tag + ' ' + id);
+        await p.waitForTimeout(id === 'total' ? 2900 : 700); await shot(`${id}-right`); await over(id);
+        if (id === 'total') { await p.fill('#scrub', '120'); await p.dispatchEvent('#scrub', 'input'); await shot('total-scrub-year10'); }
+      },
+      async chain() {
+        for (let i = 0; i < 5; i++) { await p.click(`.card[data-key="${i}"]`); await p.click(`#bay${i + 1}`); }
+        await p.click('#chk'); log(tag, 'chain wrong ->', (await fb()).slice(0, 90)); await shot('chain-wrong');
+        await p.click('#bay1'); const back = await p.evaluate(() => !document.querySelector('.card[data-key="0"]').classList.contains('placed')); log(tag, 'chain: tapping a filled bay takes the event back ->', back); if (!back) fails.push(tag + ' chain take-back');
+        if (await p.$('#helpRow button[data-l="1"]')) await p.click('#helpRow button[data-l="1"]');
+        const ans = plan.chain.answer;
+        { const c = await p.locator('.card[data-key="0"]').boundingBox(), d = await p.locator(`#bay${ans[0]}`).boundingBox();
+          await p.mouse.move(c.x + 20, c.y + c.height / 2); await p.mouse.down(); await p.mouse.move(c.x + 60, c.y + 30, { steps: 4 }); await p.mouse.move(d.x + d.width / 2, d.y + d.height / 2, { steps: 12 }); await p.mouse.up(); await p.waitForTimeout(120); }
+        for (let i = 1; i < 5; i++) { await p.click(`.card[data-key="${i}"]`); await p.click(`#bay${ans[i]}`); }
+        await p.click('#chk'); const ch = await fb(); log(tag, 'chain right ->', ch.slice(0, 70)); if (!/^Right/.test(ch)) fails.push(tag + ' chain'); await shot('chain-right'); await over('chain');
+      },
+      async paid() {
+        const wrongTags = ['a', 'b', 'c', 'd', 'e'];
+        for (let i = 0; i < 5; i++) { await p.click(`.card[data-key="${wrongTags[i]}"]`); await p.click(`#pl${i}`); }
+        await p.click('#chk'); log(tag, 'paid wrong ->', (await fb()).slice(0, 90)); await shot('paid-wrong');
+        for (let i = 0; i < 5; i++) { await p.click(`.card[data-key="${plan.paid.answer[i]}"]`); await p.click(`#pl${i}`); }
+        await p.click('#chk'); const pd = await fb(); log(tag, 'paid right ->', pd.slice(0, 70)); if (!/^Right/.test(pd)) fails.push(tag + ' paid'); await p.waitForTimeout(600); await shot('paid-right'); await over('paid');
+      },
+      async q1() {
+        await p.click('.bigchoice[data-k="level"]'); log(tag, 'q1 wrong ->', (await fb()).slice(0, 70));
+        await p.click('.bigchoice[data-k="down"]'); const q = await fb(); log(tag, 'q1 right ->', q.slice(0, 70)); if (!/^Right/.test(q)) fails.push(tag + ' q1'); await shot('q1-right'); await over('q1');
+      },
+      async q2() {
+        await p.click('#q2broker'); await p.click('#chk'); log(tag, 'q2 wrong ->', (await fb()).slice(0, 70));
+        { const t = await p.locator('#token').boundingBox(), f = await p.locator('#q2fund').boundingBox();
+          await p.mouse.move(t.x + 20, t.y + 20); await p.mouse.down(); await p.mouse.move(t.x + 60, t.y + 60, { steps: 4 }); await p.mouse.move(f.x + f.width / 2, f.y + f.height / 2, { steps: 12 }); await p.mouse.up(); await p.waitForTimeout(100); }
+        await p.click('#chk'); const q = await fb(); log(tag, 'q2 right ->', q.slice(0, 70)); if (!/^Right/.test(q)) fails.push(tag + ' q2'); await shot('q2-right'); await over('q2');
+      },
+      // the short lender game: all loose (bankrupt in 2007, frames recorded), then Play again strict twice: replaced in 2005,
+      // then the player watches from inside Crestline to the 2007 crash
+      async game() {
+        await p.click('#goOn'); await p.waitForTimeout(250); await shot('game-2004');
+        const year = async (c, frames) => {
+          await p.click(`.ch3[data-c="${c}"]`);
+          if (frames) { for (let k = 0; k < frames; k++) { await p.waitForTimeout(380); await p.locator('.g2-stage').screenshot({ path: `${OUT}/frames/${tag}-${String(k).padStart(2, '0')}.png` }); } }
+          else { await p.waitForTimeout(150); await p.evaluate(() => window.MM.gameApi.skip()); }
+          await p.waitForSelector('#goOn', { timeout: 15000 });
+        };
+        const next = async () => { await p.click('#goOn'); await p.waitForTimeout(250); };
+        for (let k = 0; k < 3; k++) { await year('L'); if (k === 0) await shot('game-2004-react'); await next(); }
+        await shot('game-2007-choose'); await year('L', tag === 'desk' || tag === 'phone' ? 28 : 0); await shot('game-2007-react');
+        await next(); await p.waitForTimeout(400); const end1 = (await p.textContent('.ending h2')).trim(); await shot('game-end-bust');
+        await p.click('#again'); await p.waitForTimeout(300); await p.click('#goOn'); await year('S'); await shot('game-strict-warned'); await next(); await year('S'); await shot('game-replaced');
+        await next(); let watched = 0; // inside Crestline: watch each remaining year to the crash
+        while (await p.$('#goOn') && /^Watch/.test(await p.textContent('#goOn'))) { await p.click('#goOn'); await p.waitForTimeout(150); await p.evaluate(() => window.MM.gameApi.skip()); await p.waitForSelector('#goOn:not([disabled])'); watched++; if (watched === 2) await shot('game-inside-crestline-2007'); await next(); }
+        await p.waitForTimeout(400); const end2 = (await p.textContent('.ending h2')).trim(); await shot('game-end-replaced');
+        const g = await p.evaluate(() => window.MM.S.log.game);
+        const ok = /bankrupt in 2007/.test(end1) && /^Replaced in 2005; Crestline Mortgage bankrupt in 2007/.test(end2) && watched === 2 && g.done && g.value === 'g4:SS';
+        log(tag, 'game', end1, '|', end2, '| years watched inside Crestline', watched, '| saved', g.value, ok ? 'ok' : 'NOT OK'); if (!ok) fails.push(tag + ' game'); await over('game');
+      },
+      async note() {
+        await p.fill('#memo', 'We lent to families with no proof of income because every loan paid us a fee when we sold it. '.repeat(3).trim());
+        await p.waitForTimeout(700); const wc = (await p.textContent('#wc')).trim(); log(tag, 'memo ->', wc); if (!/Saved/.test(wc)) fails.push(tag + ' memo'); await shot('memo'); await over('memo');
+      },
     };
-    const next = async () => { await p.click('#goOn'); await p.waitForTimeout(250); };
-    await shot('01-game-2002');
-    for (let k = 0; k < 5; k++) { await year('L'); if (k === 1) await shot('02-game-2003-react'); await next(); if (k === 2) await shot('02b-game-2005'); }
-    await shot('03-game-2007-set');
-    await year('L', tag === 'desk' || tag === 'phone' ? 28 : 0);
-    await shot('04-game-2007-after');
-    await next(); await p.waitForTimeout(400);
-    const end1 = (await p.textContent('.ending h2')).trim(); await shot('05-game-end-bust');
-    await p.click('#again'); await p.waitForTimeout(300); await year('S'); await shot('06-game-strict-warned'); await next(); await year('S'); await next(); await p.waitForTimeout(400);
-    const end2 = (await p.textContent('.ending h2')).trim(); await shot('07-game-end-fired');
-    const g = await p.evaluate(() => window.MM.S.log.game);
-    const gameOk = end1 === 'Bankrupt in 2007' && end2 === 'Fired in 2003' && g.done && /^\d+:SS$/.test(g.value); log(tag, 'game', end1, '|', end2, '| saved', g.value, gameOk ? 'ok' : 'NOT OK'); if (!gameOk) fails.push(tag + ' game');
-    await over('game');
-    await p.click('#nextBtn'); await p.waitForTimeout(300);
-
-    // ---- the debrief ----
-    // chain: wrong order (cards into bays 1..5 as shown), then help, then right; one card moved by a real drag
-    for (let i = 0; i < 5; i++) { await p.click(`.card[data-key="${i}"]`); await p.click(`#bay${i + 1}`); }
-    await p.click('#chk'); log(tag, 'chain wrong ->', (await fb()).slice(0, 90)); await shot('08-chain-wrong');
-    if (await p.$('#helpRow button[data-l="1"]')) await p.click('#helpRow button[data-l="1"]');
-    const ans = plan.chain.answer;
-    { const c = await p.locator('.card[data-key="0"]').boundingBox(), d = await p.locator(`#bay${ans[0]}`).boundingBox();
-      await p.mouse.move(c.x + 20, c.y + c.height / 2); await p.mouse.down(); await p.mouse.move(c.x + 60, c.y + 30, { steps: 4 }); await p.mouse.move(d.x + d.width / 2, d.y + d.height / 2, { steps: 12 }); await p.mouse.up(); await p.waitForTimeout(120); }
-    for (let i = 1; i < 5; i++) { await p.click(`.card[data-key="${i}"]`); await p.click(`#bay${ans[i]}`); }
-    await p.click('#chk'); const ch = await fb(); log(tag, 'chain right ->', ch.slice(0, 70)); if (!/^Right/.test(ch)) fails.push(tag + ' chain'); await shot('09-chain-right'); await over('chain');
-    await p.click('#nextBtn'); await p.waitForTimeout(300);
-    // paid
-    const wrongTags = ['a', 'b', 'c', 'd', 'e'];
-    for (let i = 0; i < 5; i++) { await p.click(`.card[data-key="${wrongTags[i]}"]`); await p.click(`#pl${i}`); }
-    await p.click('#chk'); log(tag, 'paid wrong ->', (await fb()).slice(0, 90));
-    for (let i = 0; i < 5; i++) { await p.click(`.card[data-key="${plan.paid.answer[i]}"]`); await p.click(`#pl${i}`); }
-    await p.click('#chk'); const pd = await fb(); log(tag, 'paid right ->', pd.slice(0, 70)); if (!/^Right/.test(pd)) fails.push(tag + ' paid'); await p.waitForTimeout(600); await shot('10-paid-right'); await over('paid');
-    await p.click('#nextBtn'); await p.waitForTimeout(300);
-    // check 1: the price tag. "Same" first (wrong), then drag the tag down with the pointer
-    await p.click('.rail-stop[data-pos="level"]'); await p.click('#chk'); log(tag, 'q1 wrong ->', (await fb()).slice(0, 70));
-    { const t = await p.locator('#tag').boundingBox(), r = await p.locator('#rail').boundingBox();
-      await p.mouse.move(t.x + t.width / 2, t.y + t.height / 2); await p.mouse.down(); await p.mouse.move(t.x + t.width / 2, r.y + 230, { steps: 10 }); await p.mouse.up(); }
-    await p.click('#chk'); const q1 = await fb(); log(tag, 'q1 right ->', q1.slice(0, 70)); if (!/^Right/.test(q1)) fails.push(tag + ' q1'); await shot('11-q1-right'); await over('q1');
-    await p.click('#nextBtn'); await p.waitForTimeout(300);
-    // check 2: the missed payment. Tap the broker (wrong), then drag the token onto the fund
-    await p.click('#q2broker'); await p.click('#chk'); log(tag, 'q2 wrong ->', (await fb()).slice(0, 70));
-    { const t = await p.locator('#token').boundingBox(), f = await p.locator('#q2fund').boundingBox();
-      await p.mouse.move(t.x + 20, t.y + 20); await p.mouse.down(); await p.mouse.move(t.x + 60, t.y + 60, { steps: 4 }); await p.mouse.move(f.x + f.width / 2, f.y + f.height / 2, { steps: 12 }); await p.mouse.up(); await p.waitForTimeout(100); }
-    await p.click('#chk'); const q2 = await fb(); log(tag, 'q2 right ->', q2.slice(0, 70)); if (!/^Right/.test(q2)) fails.push(tag + ' q2'); await shot('12-q2-right'); await over('q2');
-    await p.click('#nextBtn'); await p.waitForTimeout(300);
-    // memo
-    await p.fill('#memo', 'We lent to families with no proof of income because every loan paid us a fee when we sold it. '.repeat(3).trim());
-    await p.waitForTimeout(700); const wc = (await p.textContent('#wc')).trim(); log(tag, 'memo ->', wc); if (!/Saved/.test(wc)) fails.push(tag + ' memo'); await shot('13-memo'); await over('memo');
-    await p.click('#nextBtn'); await p.waitForTimeout(300);
-
-    // ---- what one loan costs: wrong once, help, then right (the live check completes it); LTV once by dragging the house ----
-    for (const id of ['loan', 'pay', 'first', 'total', 'lockin']) {
-      const fill = async (a) => { for (let i = 0; i < a.rows.length; i++) if (a.rows[i] != null) await p.fill(`.rowin[data-row="${i}"]`, String(a.rows[i])); };
-      if (id === 'loan') { const bx = await p.locator('#houseSvg').boundingBox(); await p.mouse.move(bx.x + bx.width * 0.45, bx.y + bx.height * 0.5); await p.mouse.down(); await p.mouse.move(bx.x + bx.width * 0.5, bx.y + bx.height * 0.5, { steps: 6 }); await p.mouse.up();
-        log(tag, 'loan LTV by drag ->', await p.inputValue('.rowin[data-row="3"]')); }
-      if (id === 'pay' && await p.$('.ratebtn')) { await p.click('.ratebtn >> nth=0'); log(tag, 'pay rate-card tap ->', await p.inputValue('.rowin[data-row="2"]')); }
-      await fill(plan[id].bad); if (plan[id].bad.choice) await p.check(`input[name=dec][value="${plan[id].bad.choice}"]`);
-      await p.click('#chkBtn'); await p.waitForTimeout(150);
-      log(tag, id, 'wrong ->', (await fb()).slice(0, 100));
-      if (await p.$('#helpRow button[data-l="1"]')) await p.click('#helpRow button[data-l="1"]');
-      if (id === 'loan') await shot('14-loan-wrong');
-      await fill(plan[id].good);
-      await p.waitForTimeout(900);
-      const f = await fb(); log(tag, id, 'right ->', f.slice(0, 100)); if (!/^Right/.test(f)) fails.push(tag + ' ' + id);
-      await p.waitForTimeout(id === 'total' ? 2900 : 700); await shot(`15-${id}-right`); await over(id);
-      if (id === 'total') { await p.fill('#scrub', '120'); await p.dispatchEvent('#scrub', 'input'); await shot('16-total-scrub-year10'); }
-      await p.click('#nextBtn'); await p.waitForTimeout(300);
+    for (const id of ids) {
+      if (['loan', 'pay', 'first', 'total', 'lockin'].includes(id)) await STEP.calc(id); else await STEP[id]();
+      if (await p.$('#nextBtn')) await p.click('#nextBtn'); await p.waitForTimeout(300);
     }
 
     // ---- receipt ----
@@ -118,8 +118,8 @@ const fs = require('fs');
   // reduced motion: the game still plays and the 2007 moment still reads, without movement
   { const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' }); const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push('reduced ' + e));
     await p.goto(base + 'index.html'); await p.click('#goBtn'); await p.waitForTimeout(300);
-    for (let k = 0; k < 4; k++) await p.click('#wNext');
-    for (let k = 0; k < 6; k++) { await p.click('.ch3[data-c="L"]'); await p.waitForSelector('#goOn'); if (k < 5) await p.click('#goOn'); await p.waitForTimeout(100); }
+    await p.evaluate(() => window.MM.go('game')); await p.click('#goOn');
+    for (let k = 0; k < 4; k++) { await p.click('.ch3[data-c="L"]'); await p.waitForSelector('#goOn'); if (k < 3) await p.click('#goOn'); await p.waitForTimeout(100); }
     const t = await p.evaluate(() => (document.querySelector('#stTick') || {}).textContent); log('reduced motion after 2007:', t); if (!/Bankrupt in 2007/.test(t)) fails.push('reduced motion 2007');
     await p.screenshot({ path: `${OUT}/reduced-2007.png` }); await ctx.close(); }
   log('errors', JSON.stringify(errs)); log(fails.length || errs.length ? 'FAIL ' + JSON.stringify(fails) : 'PASS');

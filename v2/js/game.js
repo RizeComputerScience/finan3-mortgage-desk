@@ -21,7 +21,7 @@
     labels: [
       { x: 650, y: 92, t: 'Fannie Mae and Freddie Mac', a: 'middle', b: 1 },
       { x: 752, y: 142, t: 'Government-backed: payments guaranteed', a: 'start', s: 16 },
-      { x: 630, y: 506, t: 'Wall Street bank', a: 'middle', b: 1 },
+      { x: 630, y: 506, t: 'Investment bank (Wall Street)', a: 'middle', b: 1 },
       { x: 778, y: 342, t: 'Ratings agency', a: 'middle', s: 16 },
       { x: 862, y: 446, t: 'Private copy: no guarantee', a: 'middle', s: 16 },
       { x: 1100, y: 386, t: 'Investors', a: 'middle', b: 1 }, { x: 1100, y: 404, t: 'around the world', a: 'middle', s: 16 },
@@ -38,7 +38,7 @@
     money: [[160, 500], [12, 500], [12, 112], [124, 112]],
     labels: [
       { x: 96, y: 352, t: 'Fannie Mae and', a: 'middle', b: 1, s: 13 }, { x: 96, y: 367, t: 'Freddie Mac', a: 'middle', b: 1, s: 13 }, { x: 96, y: 384, t: 'guaranteed', a: 'middle', s: 12 },
-      { x: 294, y: 402, t: 'Wall Street bank,', a: 'middle', b: 1, s: 13 }, { x: 294, y: 417, t: 'ratings agency', a: 'middle', b: 1, s: 13 }, { x: 294, y: 433, t: 'no guarantee', a: 'middle', s: 12 },
+      { x: 294, y: 402, t: 'Investment bank,', a: 'middle', b: 1, s: 13 }, { x: 294, y: 417, t: 'ratings agency', a: 'middle', b: 1, s: 13 }, { x: 294, y: 433, t: 'no guarantee', a: 'middle', s: 12 },
       { x: 195, y: 536, t: 'Investors', a: 'middle', b: 1, s: 13 } ] };
   const layoutFor = (el) => (el.clientWidth || root.innerWidth) < 720 ? PORT : LAND;
   const pathD = (pts) => 'M' + pts.map((p) => p.join(' ')).join(' L');
@@ -195,7 +195,7 @@
   M.Machine = Machine;
 
   // The rival's line next door: a narrow strip, always loose.
-  function RivalStrip(host) {
+  function RivalStrip(host, name) {
     const self = {}; let svg, pts = [], timer = [], state = { cash: 20, dark: false, closed: false };
     function draw() {
       const port = (host.clientWidth || root.innerWidth) < 720, W = port ? 390 : 1200, Hh = port ? 86 : 92;
@@ -203,8 +203,8 @@
       host.innerHTML = `<svg class="world" viewBox="0 0 ${W} ${Hh}" role="img" aria-labelledby="rvT"><title id="rvT">Next door, your rival's line, loose every year</title>
         <rect x="0" y="0" width="${W}" height="${Hh}" fill="${K.ink2}"/>
         <path d="M${ox + ow} 56 H${bx}" stroke="${K.ink3}" stroke-width="12"/><path d="M${ox + ow} 56 H${bx}" stroke="${K.line}" stroke-width="2" stroke-dasharray="3 9"/>
-        <g id="rvOff">${A.office(ox, 8, ow, 78, 'Your rival', 'rv')}</g>${A.bank(bx + 6, 22, port ? 54 : 70, port ? 54 : 62, K.muted)}
-        <text x="${(ox + ow + bx) / 2}" y="${port ? 24 : 26}" text-anchor="middle" font-family="Jost" font-size="${port ? 12 : 14}" fill="${K.muted}">Next door: your rival, loose every year</text>
+        <g id="rvOff">${A.office(ox, 8, ow, 78, esc((name || 'Your rival').split(' ')[0]), 'rv')}</g>${A.bank(bx + 6, 22, port ? 54 : 70, port ? 54 : 62, K.muted)}
+        <text x="${(ox + ow + bx) / 2}" y="${port ? 24 : 26}" text-anchor="middle" font-family="Jost" font-size="${port ? 12 : 15}" fill="${K.muted}">Across the street: ${esc(name || 'your rival')}, which lends to almost anyone</text>
         <text id="rvCash" x="${(ox + ow + bx) / 2}" y="${Hh - 6}" text-anchor="middle" font-family="Jost" font-weight="600" font-size="${port ? 12 : 14}" fill="${K.gold}"></text><g id="rvSp"></g></svg>`;
       svg = host.querySelector('svg'); pts = [ox + ow, bx]; paint();
     }
@@ -250,188 +250,165 @@
   // ---------------- title screen machine ----------------
   M.heroMachine = (host) => { const m = Machine(host, { cash: 60 }); m.setFamilies(9); m.idle(true); M.onLeave(() => m.destroy()); return m; };
 
-  // ---------------- the people in the lender's game ----------------
-  // Every party gets a reason for what it does (the memo question stays open). Lines in quotes are game fiction unless
-  // FACTS.md gives a source; the applicants are invented. Strict, normal and loose are v1's options: strict = proof of income
-  // and 20% down, normal = proof of income and 10% down, loose = no proof and nothing down.
-  const WHO = { officer: 'Your loan officer', chair: 'Your board chair', rival: 'Your rival', wallst: 'A Wall Street buyer', analyst: 'A ratings analyst', fannie: 'A Fannie Mae buyer', regulator: 'A bank regulator' };
+  // ---------------- the lender's game: four years, named people (round 3) ----------------
+  // The people and companies are invented; every fact a line states is in FACTS.md. Each party gets a reason; the memo
+  // question stays open. Choices say in plain words what each standard asks of a family (rule 62).
+  const CO = 'Lakeview Home Loans', RIV = 'Crestline Mortgage';
+  const PPL = {
+    chair: ['chair', 'Ruth Adler, chair of your board'], officer: ['officer', 'Danny Ruiz, your loan officer'], rival: ['rival', `Brad Crane, who runs ${RIV}`],
+    wallst: ['wallst', 'Martin Vale, a buyer at an investment bank on Wall Street'], analyst: ['analyst', 'Priya Shah, a ratings analyst'],
+  };
+  // The three lending standards in the how-to page's words (TAUGHT.md section 1).
+  const STD = { S: 'Proof of income, at least 20% down, a good record of repaying.', N: 'Proof of income, a good record, as little as 10% down.', L: 'Take their word on income, little or nothing down, missed payments are fine.' };
   const VISIT = {
-    2002: (V) => ['chair', `Our shareholders compare us with the lender next door every year. If it out-earns us${V.T ? ` by more than $${V.T} million` : ''} two years running, you’re out.`],
-    2003: () => ['rival', 'Met you at the industry dinner, right? We approved almost everyone last year and sold every loan the same week. My loan officers bought boats.'],
-    2004: () => ['wallst', 'I’ll buy every loan you can make, paperwork or not. We pool them into bonds and earn a fee on every bond we sell.'],
-    2005: () => ['analyst', 'The bank selling these bonds pays us to grade them. Our models say the top slices are safe, so they get AAA.'],
-    2006: () => ['fannie', 'Wall Street has been taking our business. We’re buying riskier loans now too.'],
-    2007: (V) => ['wallst', V.late ? 'We bought through the spring. Not anymore. And the loans you sold us that failed in their first months? Under our contract, they’re yours again.' : 'We’re not buying. And the loans you sold us that failed in their first months? Under our contract, they’re yours again.'],
-    2008: () => ['regulator', 'We could set lending rules for every lender. While prices rose, these loans got repaid, and the lenders said the market was working.'],
+    2004: ['wallst', 'I’ll buy every loan you can make, checked or not. We pool them into bonds and earn a fee on every bond we sell.'],
+    2005: ['rival', `Good to see you at the bankers’ dinner. ${RIV} said yes to almost everyone last year and sold every loan the same week. My loan officers bought boats.`],
+    2006: ['analyst', 'The bank selling these bonds pays us to grade them. Our models say they are about as safe as a bond can be: AAA.'],
+    2007: ['wallst', 'We’ve stopped buying loans nobody checked. And the ones you sold us that failed in their first months? Our contract says they come back to you.'],
   };
   const APP = {
-    2002: { who: 'A nurse and a truck driver', role: 'couple', ask: 'Pay stubs show $6,000 a month. They saved 10% of a $200,000 house.', S: 'Needs 20% down. They have 10%: no loan.', N: 'Pay stubs and 10% down: approved.', L: 'Approved. No questions asked.' },
-    2003: { who: 'A restaurant owner', role: 'person', ask: 'Says he earns $9,000 a month. No tax returns, nothing saved.', S: 'No proof of income: no loan.', N: 'No proof of income: no loan.', L: 'Approved on his word.' },
-    2004: { who: 'A couple buying a second house to rent out', role: 'couple', ask: 'Income stated, not shown. Nothing down on $300,000.', S: 'No proof, nothing down: no loan.', N: 'No proof, nothing down: no loan.', L: 'Approved. The rent will cover it, they say.' },
-    2005: { who: 'A teacher', role: 'person', ask: 'Pay stubs show $4,000 a month. She wants a $350,000 house with nothing down.', S: 'Needs $70,000 down: no loan.', N: 'Needs $35,000 down: no loan.', L: 'Approved. The payment would take most of her pay.' },
-    2006: { who: 'A young couple', role: 'couple', ask: 'Two new jobs, no pay stubs yet, no savings. A $250,000 starter home.', S: 'No proof, nothing down: no loan.', N: 'No proof, nothing down: no loan.', L: 'Approved. They start paying next month.' },
-    2007: { who: 'A family with savings', role: 'family', ask: 'Pay stubs, and 20% down saved for a $250,000 house.', S: 'Approved. Fannie Mae still buys loans like this.', N: 'Approved. Fannie Mae still buys loans like this.', L: 'Approved, along with everyone else. Nobody buys loose loans now: you keep them.' },
-    2008: { who: 'A family with pay stubs', role: 'family', ask: 'Pay stubs, and 10% saved for a $220,000 house.', S: 'Needs 20% down: no loan.', N: 'Approved. Fannie Mae buys it.', L: 'Approved, along with everyone else. Nobody buys loose loans: you keep them.' },
+    2004: { who: 'Tom and Ana Rivera', role: 'couple', ask: 'Pay stubs show $6,000 a month. They saved $20,000: 10% of the $200,000 price (0.10 × $200,000). Every bill paid on time.', S: '10% down, not 20%. No loan.', N: 'Proof of income, 10% down, a good record. Approved.', L: 'Approved.' },
+    2005: { who: 'Mark Dunn, who owns a restaurant', role: 'person', ask: 'Says he earns $9,000 a month; no pay stubs. Saved nothing. Missed two car payments last year.', S: 'No proof of income. No loan.', N: 'No proof of income. No loan.', L: 'Approved on his word.' },
+    2006: { who: 'Keisha Brown, a teacher', role: 'person', ask: 'Pay stubs show $4,000 a month. Every bill paid on time. Wants a $350,000 house; saved nothing.', S: 'No down payment. No loan.', N: 'No down payment. No loan.', L: 'Approved with nothing down.' },
+    2007: { who: 'Paul and Lena Novak', role: 'family', ask: 'Pay stubs show $7,000 a month. Saved $50,000: 20% of a $250,000 price. Every bill paid on time.', S: 'Proof, 20% down, a good record. Approved.', N: 'Proof, 20% down, a good record. Approved.', L: 'Approved, along with everyone else.' },
   };
-  // How selling a loan works, shown once on one loan (rule 50). Illustrative numbers ("say").
-  const WALK = [
-    ['officer', 'Here is how we make money. A couple borrows $200,000 from us for a house. That cash is now tied up in one loan.', 0],
-    ['officer', 'So we sell the loan, say to Fannie Mae for $202,000. We get our cash back plus a $2,000 fee, and we can lend again.', 1],
-    ['fannie', 'We pool it with thousands of others and sell bonds. A pension fund buys one and collects a share of every family’s monthly payment. We guarantee those payments.', 2],
-    ['officer', 'Loans Fannie Mae won’t buy go to Wall Street instead, where a ratings agency grades the bonds and nobody guarantees them. One catch: we promise each loan meets the buyer’s rules. If it fails within months, the buyer can send it back.', 3],
-  ];
-  const card = (role, who, line, extra) => `<div class="pcard">${A.portrait(role, 60)}<div><p class="pwho">${esc(who)}</p><p class="pline">${line}</p>${extra || ''}</div></div>`;
+  const card = (who, line, extra) => `<div class="pcard">${A.portrait(who[0], 60)}<div><p class="pwho">${esc(who[1])}</p><p class="pline">${line}</p>${extra || ''}</div></div>`;
   const M$ = (x) => (x < 0 ? '−$' : '$') + Math.abs(x) + ' million';
   const signed = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + '$' + Math.abs(x) + 'M';
-  const pickVariant = () => { try { const a = new Uint32Array(1); root.crypto.getRandomValues(a); return a[0] % C.VARIANTS.length; } catch (e) { return Math.floor(Math.random() * C.VARIANTS.length); } };
 
-  // ---------------- step 1: the lender's game ----------------
   M.showGame = function (main, s) {
     const L = S().log[s.id], t = M.task(s.id), YRS = C.YEARS;
     main.insertAdjacentHTML('beforeend', `<section class="game2" aria-labelledby="bt"><h2 id="bt" class="sr-only">${esc(s.label)}</h2>
       <div class="g2-stage on-ink" id="g2stage"><div class="g2-top"><span class="g2-year" id="stYear"></span><span class="tick" id="stTick" aria-live="polite"></span>
           <span class="spark-wrap" aria-hidden="true">House prices<svg class="spark" viewBox="0 0 150 34"><path id="sparkLine" fill="none" stroke="#F3F5F2" stroke-width="2"/><circle id="sparkDot" r="3" fill="#E4572E"/></svg></span>
           <button class="btn ghost small skipbtn" type="button" id="skipBtn" hidden>Skip</button></div>
-        <div id="mach"></div><div class="rivalstrip" id="rival"></div>
-        <div class="g2-race" id="race"></div></div>
+        <div id="mach"></div><div class="rivalstrip" id="rival"></div><div class="g2-race" id="race"></div></div>
       <div class="g2-side" id="side"><div class="g2-photo" id="photo"></div><div class="g2-scene" id="scene"></div><div class="g2-react" id="react" hidden></div></div></section>
       <div id="endBox"></div>
-      <div class="work" id="g2after" hidden><div class="fb" id="fb" aria-live="polite"></div>${M.nextRow(s, !L.done)}<details class="small" style="margin-top:14px"><summary>Sources</summary><p>Financial Crisis Inquiry Commission, <a href="https://www.govinfo.gov/content/pkg/GPO-FCIC/pdf/GPO-FCIC.pdf" target="_blank" rel="noopener">The Financial Crisis Inquiry Report</a> (2011). The dollar figures and the people are made up; the events in each year are real. House prices: Federal Housing Finance Agency, via FRED (series HPIPONM226S).</p></details></div>`);
+      <div class="work" id="g2after" hidden><div class="fb" id="fb" aria-live="polite"></div>${M.nextRow(s, !L.done)}<details class="small" style="margin-top:14px"><summary>Sources</summary><p>Financial Crisis Inquiry Commission, <a href="https://www.govinfo.gov/content/pkg/GPO-FCIC/pdf/GPO-FCIC.pdf" target="_blank" rel="noopener">The Financial Crisis Inquiry Report</a> (2011). The companies, the people and the dollar figures are made up; the events in each year are real. House prices: Federal Housing Finance Agency, via FRED (series HPIPONM226S).</p></details></div>`);
     M.wireNext(s);
-    const mach = Machine($('#mach'), { cash: C.START_CASH }), rival = RivalStrip($('#rival'));
-    const chart = priceChart(document.createElement('div'), $('.spark'));
+    const mach = Machine($('#mach'), { cash: C.START_CASH, label: 'Lakeview' }), rival = RivalStrip($('#rival'), RIV);
+    const chart = priceChart(document.createElement('div'), $('.spark')); chart.toYearEnd(2003);
     M.onLeave(() => { mach.destroy(); rival.destroy(); });
-    let vi = 0, seq = '', phase = 'year', busy = false;
-    const sim = () => C.gameSim(seq, vi), V = () => C.VARIANTS[vi], PR = () => C.PARAMS[vi].PROFIT;
-    const tick = (txt) => { $('#stTick').textContent = txt || ''; };
-    const narrow = () => root.innerWidth < 1100;
-    const race = (r) => {
-      const you = r ? r.cash : C.START_CASH, rv = r ? r.rcash : C.START_CASH, mx = Math.max(40, Math.abs(you), Math.abs(rv == null ? 0 : rv)), n = r ? r.trail : 0;
+    let seq = '', phase = 'intro', busy = false;
+    const sim = () => C.gameSim(seq), tick = (txt) => { $('#stTick').textContent = txt || ''; }, narrow = () => root.innerWidth < 1100;
+    const race = (r, inside) => {
+      const you = r ? r.cash : C.START_CASH, rv = r ? r.rcash : C.START_CASH, mx = Math.max(40, Math.abs(you), Math.abs(rv == null ? 0 : rv));
       const bar = (who, v, col) => `<div class="race-row"><span class="race-who">${who}</span><span class="race-bar"><i style="width:${v == null ? 0 : Math.max(1.5, 100 * Math.max(0, v) / mx)}%;background:${col}"></i></span><span class="race-v${v != null && v < 0 ? ' neg' : ''}">${v == null ? 'closed' : v < 0 ? 'bankrupt' : '$' + v + 'M'}</span></div>`;
-      $('#race').innerHTML = `<div class="race-bars">${bar('You', you, K.gold)}${bar('Rival', rv, K.red)}</div><div class="patience" title="Years behind your rival">${A.board(n ? 'warn' : 'calm')}<p class="lamps">${[0, 1].map((k) => `<span class="lamp${k < n ? ' on' : ''}" aria-hidden="true"></span>`).join('')}<span>Years behind your rival: ${n}. At 2, you’re fired.</span></p></div>`;
+      $('#race').innerHTML = `<div class="race-bars"><p class="race-cap">Cash on hand</p>${inside ? '' : bar('Lakeview', you, K.gold)}${bar('Crestline', rv, K.red)}</div>`;
     };
     const photo = (y) => { const ph = PHOTOS[y];
       $('#photo').innerHTML = `${ph ? `<img src="${ph.src}" alt="${esc(ph.alt)}" width="1200" height="400">` : ''}<div class="g2-photo-txt"><p class="g2-bigyear">${y}</p><p class="g2-news">${esc(C.NEWS[y])}</p></div>${ph ? `<p class="g2-credit">${esc(ph.credit)}</p>` : ''}`;
-      $('#photo').classList.toggle('nophoto', !ph); const st = $('#g2stage'); st.style.setProperty("--bg", ph ? `url("${new URL(ph.src, root.location.href).href}")` : "none"); $('#stYear').textContent = y; };
+      $('#photo').classList.toggle('nophoto', !ph); $('#g2stage').style.setProperty('--bg', ph ? `url("${new URL(ph.src, root.location.href).href}")` : 'none'); $('#stYear').textContent = y; };
+    const sideMode = (m) => { $('#side').classList.toggle('reacting', m === 'react'); $('#react').hidden = m !== 'react'; if (m === 'react') $('#scene').innerHTML = ''; $('#side').scrollTop = 0; };
 
-    // The worked instance: one loan sold, step by step, on the machine (shown before the first year; skippable).
-    async function walkthrough() {
-      phase = 'walk'; photo(2002); race(null); tick('How your company makes money');
-      for (let k = 0; k < WALK.length; k++) {
-        const [role, line, step] = WALK[k];
-        $('#scene').innerHTML = `${card(role, role === 'officer' ? WHO.officer : WHO.fannie, esc(line))}<div class="g2-go"><button class="btn run" type="button" id="wNext">${k < WALK.length - 1 ? 'Next' : 'Open for business'}</button><button class="btn ghost small" type="button" id="wSkip">Skip</button></div>`;
-        mach.demo(step);
-        const go = await new Promise((res) => { $('#wNext').addEventListener('click', () => res('next')); $('#wSkip').addEventListener('click', () => res('skip')); });
-        if (go === 'skip') break;
-      }
-      mach.demo(-1); M.store.set(M.KEY + ':walked', 1); drawYear();
+    function intro() {
+      phase = 'intro'; photo(2004); race(null); sideMode('scene');
+      $('#scene').innerHTML = `${card(PPL.chair, `“Welcome to ${CO}. You decide how carefully we lend, one year at a time, from 2004 to 2007. Every loan we make, we sell, and we earn a fee on it. ${RIV}, across the street, lends to almost anyone. If ${RIV} out-earns us two years running, the board will replace you.”`)}
+        <div class="g2-go"><button class="btn run" type="button" id="goOn">Start in 2004</button></div>`;
+      $('#goOn').addEventListener('click', drawYear); $('#goOn').focus({ preventScroll: true });
     }
     function drawYear() {
-      const i = seq.length, y = YRS[i], prev = sim().rows[i - 1], ap = APP[y], [vr, vl] = VISIT[y](V());
-      phase = 'year'; tick(''); $('#skipBtn').hidden = true; $('#react').hidden = true; $('#side').classList.remove('reacting'); photo(y); race(prev);
-      const closed = prev && (prev.rcash == null || prev.rcash < 0);
-      $('#scene').innerHTML = `${card(vr, WHO[vr], `“${esc(vl)}”`)}
-        ${card(ap.role, `${WHO.officer}: an application`, `<b>${esc(ap.who)}.</b> ${esc(ap.ask)}`)}
-        <div class="choices3" role="group" aria-label="Your lending standards for ${y}">${['S', 'N', 'L'].map((c) => `<button type="button" class="ch3 q${c}" data-c="${c}"><span class="ch3-h"><svg class="sw" viewBox="0 0 26 32" aria-hidden="true">${A.paper(c)}</svg><b>${C.NAME[c]}</b><span class="fee${PR()[c][i] < 0 ? ' neg' : ''}">${signed(PR()[c][i])}</span></span><span class="ch3-t">${esc(ap[c])}</span><span class="ch3-r">${c === 'L' ? (y >= 2007 ? 'Nobody is buying loose loans now.' : 'Sold to Wall Street, no guarantee. A loan that fails within months can be sent back to you.') : 'Sold to Fannie Mae, which guarantees the bonds.'}</span></button>`).join('')}</div>
-        <p class="g2-hint">${closed ? 'Your rival is closed.' : `Your rival stays loose: ${signed(PR().L[i])} this year.`}</p>`;
+      const i = seq.length, y = YRS[i], prev = sim().rows[i - 1], ap = APP[y], v = VISIT[y];
+      phase = 'year'; tick(''); $('#skipBtn').hidden = true; sideMode('scene'); photo(y); race(prev);
+      const fee = (c) => C.PROFIT[c][i];
+      $('#scene').innerHTML = `${card([ap.role, `${PPL.officer[1].split(',')[0]} brings an application`], `<b>${esc(ap.who)}.</b> ${esc(ap.ask)}`)}
+        <p class="g2-q">How carefully do you lend in ${y}?</p><p class="g2-sub">${prev && prev.trail === 1 ? '<b>You were behind Crestline last year. Behind again and the board replaces you.</b> ' : ''}Each figure is what that standard earns ${CO} from all of this year’s loans.</p>
+        <div class="choices3" role="group" aria-label="How carefully you lend in ${y}">${['S', 'N', 'L'].map((c) => `<button type="button" class="ch3 q${c}" data-c="${c}"><span class="ch3-h"><svg class="sw" viewBox="0 0 26 32" aria-hidden="true">${A.paper(c)}</svg><b>${C.NAME[c]}</b><span class="fee${fee(c) < 0 ? ' neg' : ''}">${signed(fee(c))}</span></span><span class="ch3-d">${esc(STD[c])}</span><span class="ch3-t">For them: ${esc(ap[c])}</span>${c === 'L' ? `<span class="ch3-r">${y >= 2007 ? 'Nobody is buying loans like these now. You keep them.' : 'Sold to Wall Street. A loan that fails in its first months can be sent back to you.'} Crestline lends this way every year.</span>` : ''}</button>`).join('')}</div>
+        `;
       $$('.ch3').forEach((b) => b.addEventListener('click', () => run(b.dataset.c)));
       if (narrow() && i > 0) $('#side').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+    }
+    async function animateYear(r, before, choice, bustCash, quiet) {
+      if (narrow() && !reduced()) $('#g2stage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('#skipBtn').hidden = reduced(); $('#skipBtn').onclick = () => { if (mach.skip) mach.skip(); };
+      const bust = r.back > 0 || r.made < 0 || (quiet && r.rback > 0);
+      chart.toYearEnd(r.year, 2200);
+      const cfg = quiet ? { choice: 'L', back: r.rback, cashBefore: before, cashAfter: r.rcash, bust: r.rcash < 0 } : { choice, back: r.back, cashBefore: before, cashAfter: r.cash, bust: bustCash };
+      if (!quiet) rival.run(r);
+      if (bust) await mach.runBust(cfg, tick); else await mach.runYear(cfg);
+      if (!quiet) rival.finish(r); $('#skipBtn').hidden = true;
     }
     async function run(c) {
       if (busy) return; busy = true;
       seq += c; const S0 = sim(), r = S0.rows[S0.rows.length - 1], before = S0.rows.length > 1 ? S0.rows[S0.rows.length - 2].cash : C.START_CASH;
       phase = 'run'; $$('.ch3').forEach((b) => { b.disabled = true; b.classList.toggle('picked', b.dataset.c === c); });
-      $('#skipBtn').hidden = reduced(); $('#skipBtn').onclick = () => { if (mach.skip) mach.skip(); };
-      if (narrow() && !reduced()) $('#g2stage').scrollIntoView({ behavior: 'smooth', block: 'start' });
       tick(`${r.year}: ${C.NAME[c].toLowerCase()}`);
-      const bust = r.back > 0 || r.made < 0;
-      chart.toYearEnd(r.year, bust ? 2200 : 2400);
-      rival.run(r);
-      const cfg = { choice: c, back: r.back, cashBefore: before, cashAfter: r.cash, bust: S0.ending && S0.ending.kind === 'bust' };
-      if (bust) await mach.runBust(cfg, tick); else await mach.runYear(cfg);
-      rival.finish(r); busy = false; $('#skipBtn').hidden = true; race(r);
-      react(r, S0.ending && S0.ending.at === S0.rows.length - 1 ? S0.ending : null, S0);
+      await animateYear(r, before, c, S0.ending && S0.ending.kind === 'bust');
+      busy = false; race(r); react(r, S0.ending && S0.ending.at === S0.rows.length - 1 ? S0.ending : null);
     }
-    // Consequences arrive as people.
-    function react(r, end, S0) {
+    const did = (who, v) => (v < 0 ? `${who} lost ${M$(-v)}.` : `${who} made ${M$(v)}.`);
+    function react(r, end) {
       phase = 'react'; const out = [];
-      const did = (who, v) => (v < 0 ? `${who} lost ${M$(-v)}.` : `${who} earned ${M$(v)}.`);
-      const nums = `${did('You', r.profit)}${r.rprofit == null ? ' Your rival is closed.' : ' ' + did('Your rival', r.rprofit)}`;
-      if (r.back) out.push(card('wallst', WHO.wallst, `“These loans failed in their first months. They’re yours: ${M$(r.back)}.”`));
-      if (r.rivalBust) out.push(card('rival', WHO.rival, '“The loans keep coming back and we can’t pay for them. We’re filing for bankruptcy.”'));
-      if (r.year === 2007 && r.back) out.push(card('analyst', WHO.analyst, '“We’re downgrading the bonds we graded AAA.”'));
-      if (end && end.kind === 'fired') out.push(card('chair', WHO.chair, `“Two years running behind them. The board has voted. We’re letting you go.”`));
-      else if (end) out.push(card('chair', WHO.chair, '“There’s no cash left. We’re filing for bankruptcy.”'));
-      else if (r.trail === 1) out.push(card('chair', WHO.chair, `“Your rival made ${M$(r.rprofit - r.profit)} more than we did. Fall behind again in ${r.year + 1} and you’re out.”`));
-      else if (r.choice !== 'L' && r.rprofit != null && r.rprofit > r.profit) out.push(card('rival', WHO.rival, '“Saw your numbers. Want the phone number of my Wall Street buyer?”'));
-      else if (r.choice === 'L' && !r.back) out.push(card('officer', WHO.officer, `“We approved the ${esc(APP[r.year].who.replace(/^A /, '').toLowerCase())} and everyone else who walked in. Wall Street bought every loan.”`));
-      else out.push(card('chair', WHO.chair, '“We kept pace. Same again next year.”'));
-      $('#react').innerHTML = `<p class="g2-nums">${nums}</p>${out.slice(0, 3).join('')}<div class="g2-go"><button class="btn run" type="button" id="goOn">${end ? 'See how it ended' : `Go to ${r.year + 1}`}</button></div>`;
-      $('#react').hidden = false; $('#scene').innerHTML = ''; $('#side').classList.add('reacting'); $('#side').scrollTop = 0; tick(end ? (end.kind === 'fired' ? `Fired in ${end.year}` : `Bankrupt in ${end.year}`) : '');
-      $('#goOn').addEventListener('click', () => (end ? drawEnd(true) : drawYear())); $('#goOn').focus({ preventScroll: true });
+      if (r.back) out.push(card(PPL.wallst, `“${esc(VISIT[2007][1])} That’s ${M$(r.back)}.”`));
+      if (r.rivalBust) out.push(card(PPL.rival, `“The loans keep coming back and we can’t pay for them. ${RIV} is filing for bankruptcy.”`));
+      if (r.year === 2007 && r.back) out.push(card(PPL.analyst, '“We’re downgrading the bonds we graded AAA.”'));
+      if (end && end.kind === 'fired') { out.push(card(PPL.chair, `“${RIV} out-earned us two years running. The board has voted to replace you.”`)); out.push(card(PPL.rival, `“No hard feelings. Come work for me at ${RIV}. We could use someone careful.”`)); out.push('<p class="g2-ok">You have not failed anything: being replaced is one of the game’s two endings, and it completes this step. Play on to see 2007 from inside Crestline.</p>'); }
+      else if (end) out.push(card(PPL.chair, `“There’s no cash left. ${CO} is filing for bankruptcy.”`));
+      else if (r.trail === 1) out.push(card(PPL.chair, `“${RIV} made ${M$(r.rprofit - r.profit)} more than we did. Fall behind again in ${r.year + 1} and the board will replace you.”`));
+      else if (r.choice !== 'L' && r.rprofit != null && r.rprofit > r.profit) out.push(card(PPL.rival, '“Saw your numbers. Want the phone number of my Wall Street buyer?”'));
+      else if (r.choice === 'L' && !r.back) out.push(card(PPL.officer, `“We approved ${esc(APP[r.year].who.split(',')[0])} and everyone else who walked in. Wall Street bought every loan.”`));
+      else out.push(card(PPL.chair, '“We kept pace. Same again next year.”'));
+      const nums = `${did(CO, r.profit)}${r.rprofit == null ? '' : ' ' + did(RIV, r.rprofit)}`;
+      const vis = VISIT[r.year]; if (!end && r.year < 2007 && out.length < 2) out.push(card(PPL[vis[0]], `“${esc(vis[1])}”`));
+      if (r.year === 2007 && !r.back && !end) out.unshift(card(PPL[vis[0]], `“${esc(vis[1])}”`));
+      $('#react').innerHTML = `<p class="g2-nums">${nums}</p>${out.slice(0, 3).join('')}<div class="g2-go"><button class="btn run" type="button" id="goOn">${end ? (end.kind === 'fired' ? `Join ${RIV}` : 'See how it ended') : `Go to ${r.year + 1}`}</button></div>`;
+      sideMode('react'); tick(end ? (end.kind === 'fired' ? `Replaced in ${end.year}` : `Bankrupt in ${end.year}`) : '');
+      $('#goOn').addEventListener('click', () => (end ? (end.kind === 'fired' ? inside(end.year) : drawEnd(true)) : drawYear())); $('#goOn').focus({ preventScroll: true });
+    }
+    // Fired: you keep playing to the crash from inside the rival's company, which stays loose (rule 63).
+    async function inside(firedYear) {
+      phase = 'inside'; const R = C.gameSim('LLLL').rows; let k = YRS.indexOf(firedYear) + 1;
+      $('#rival').hidden = true; mach.setLabel('Crestline'); mach.reset({ cash: R[k - 1].rcash }); race(R[k - 1], true);
+      const step = async () => {
+        const r = R[k], y = r.year; photo(y); sideMode('scene');
+        $('#scene').innerHTML = `${card(PPL.rival, y < 2007 ? `“Welcome aboard. Here we say yes to everyone and sell every loan the same week.”` : '“Same as always. Approve them, sell them.”')}
+          <p class="g2-q">You work for Brad Crane now, and he decides: ${RIV} stays loose in ${y}.</p><div class="g2-go"><button class="btn run" type="button" id="goOn">Watch ${y}</button></div>`;
+        $('#goOn').addEventListener('click', async () => {
+          $('#goOn').disabled = true; tick(`${y}: you work at ${RIV} now`);
+          await animateYear(r, R[k - 1].rcash, 'L', false, true); race(r, true);
+          const out = [`<p class="g2-nums">${did(RIV, r.rprofit)}</p>`];
+          if (r.rback) out.push(card(PPL.wallst, `“These loans failed in their first months. They’re yours again: ${M$(r.rback)}.”`), card(PPL.rival, `“We can’t pay for them. ${RIV} is filing for bankruptcy.”`));
+          else out.push(card(PPL.rival, '“Another record year. Bonuses all round.”'));
+          const last = k === YRS.length - 1;
+          $('#react').innerHTML = `${out.join('')}<div class="g2-go"><button class="btn run" type="button" id="goOn">${last ? 'See how it ended' : `Go to ${y + 1}`}</button></div>`; sideMode('react');
+          $('#goOn').addEventListener('click', () => { if (last) drawEnd(true); else { k++; step(); } }); $('#goOn').focus({ preventScroll: true });
+        });
+      };
+      step();
     }
     function drawEnd(fresh) {
-      const S0 = sim(), e = S0.ending, E = C.ENDINGS[e.kind](e.year), riv = C.gameSim('LLLLLLL', vi).rows, rv = {}; riv.forEach((x) => { rv[x.year] = x; });
+      const S0 = sim(), e = S0.ending, E = C.ENDINGS[e.kind](e.year), riv = C.gameSim('LLLL').rows, rv = {}; riv.forEach((x) => { rv[x.year] = x; });
       const you = {}; S0.rows.forEach((x) => { you[x.year] = x; });
-      phase = 'end'; $('#react').hidden = true; $('#side').hidden = true; $('.game2').classList.add('ended'); mach.redraw(true); chart.toYearEnd(2012);
-      const peak = Math.max(C.START_CASH, ...S0.rows.map((x) => x.cash)), peakYr = (S0.rows.find((x) => x.cash === peak) || { year: 2002 }).year;
-      const W = allGames(vi), mine = e.kind + e.year, maxN = Math.max(...W.map((w) => w.n));
-      const hist = W.map((w) => `<li class="${w.key === mine ? 'you' : ''}"><span class="h-l">${w.kind === 'fired' ? 'Fired' : 'Bankrupt'} in ${w.year}</span><span class="h-b"><i style="width:${100 * w.n / maxN}%"></i></span><span class="h-n">${w.n}${w.key === mine ? ' <b>you</b>' : ''}</span></li>`).join('');
-      const better = (a, b) => !b || a.year > b.year || (a.year === b.year && a.peak > b.peak);
-      const me = { year: e.year, peak }, prevBest = M.store.get(M.KEY + ':best'), best = better(me, prevBest) ? me : prevBest; M.store.set(M.KEY + ':best', best);
-      const top = W[W.length - 1], isTop = e.year === top.year && peak === top.peak;
-      const goal = isTop ? `You found the best run this market allows: lasting until ${top.year} with a $${top.peak} million peak.` : `In this market the longest anyone lasts is ${top.year}, with at most $${top.peak} million on the way.${prevBest && best !== me ? ` Your best: ${best.year}, $${best.peak} million.` : ''}`;
-      const maxAbs = Math.max(40, ...S0.rows.map((x) => Math.abs(x.profit))), bar = (v, col, dashed) => (v == null ? '<span class="pb-empty">closed</span>' : `<span class="pb${v < 0 ? ' neg' : ''}" style="--w:${Math.min(100, 100 * Math.abs(v) / maxAbs)}%;--c:${col}"${dashed ? ' data-d="1"' : ''}></span><span class="pv">${signed(v)}</span>`);
-      const rowsHtml = YRS.map((y) => `<tr><th scope="row">${y}</th><td>${you[y] ? bar(you[y].profit, K.ink) : '<span class="pb-empty">gone</span>'}</td><td>${rv[y] ? bar(rv[y].rprofit, K.red, true) : '<span class="pb-empty">closed</span>'}</td></tr>`).join('');
-      $('#endBox').innerHTML = `<div class="ending"><section><p class="kicker">How it ended</p><h2>${esc(E.title)}</h2>
-          <div class="stats"><div><b>${e.year}</b><span>${e.kind === 'fired' ? 'the year the board fired you' : 'the year your cash ran out'}</span></div><div><b>$${peak}M</b><span>your peak cash, in ${peakYr}</span></div><div><b>${S0.rivalBust ? 'Bankrupt' : 'Still open'}</b><span>your rival${S0.rivalBust ? ', in ' + S0.rivalBust : ''}</span></div></div>
-          <div class="actions"><button class="btn gold" type="button" id="share">Share your result</button><button class="btn ghost" type="button" id="again">Play again</button><span class="small" id="shareMsg" aria-live="polite"></span></div>
-          <p class="goal">${esc(goal)} Each game deals a different market.</p>
+      phase = 'end'; $('#side').hidden = true; $('.game2').classList.add('ended'); mach.redraw(true); chart.toYearEnd(2012);
+      const peak = Math.max(C.START_CASH, ...S0.rows.map((x) => x.cash)), peakYr = (S0.rows.find((x) => x.cash === peak) || { year: 2004 }).year;
+      const maxAbs = Math.max(40, ...S0.rows.map((x) => Math.abs(x.profit)), ...riv.map((x) => Math.abs(x.rprofit))), bar = (v, col, dashed) => (v == null ? '<span class="pb-empty">closed</span>' : `<span class="pb${v < 0 ? ' neg' : ''}" style="--w:${Math.min(100, 100 * Math.abs(v) / maxAbs)}%;--c:${col}"${dashed ? ' data-d="1"' : ''}></span><span class="pv">${signed(v)}</span>`);
+      const rowsHtml = YRS.map((y) => `<tr><th scope="row">${y}</th><td>${you[y] ? bar(you[y].profit, K.ink) : '<span class="pb-empty">replaced</span>'}</td><td>${rv[y] ? bar(rv[y].rprofit, K.red, true) : ''}</td></tr>`).join('');
+      $('#endBox').innerHTML = `<div class="step-done"><p><span aria-hidden="true">✓</span> Step ${M.stepIdx(s.id) + 1} is complete. Either ending completes it.</p><button class="btn gold" type="button" id="endNext">${esc(M.nextLabel(s.id))}</button></div><div class="ending"><section><p class="kicker">How it ended</p><h2>${e.kind === 'fired' ? `Replaced in ${e.year}; ${RIV} bankrupt in 2007` : `${CO} bankrupt in ${e.year}`}</h2>
+          <p class="goal">Every way of playing ends one of these two ways: replaced for falling behind, or bankrupt when the loans come back.</p>
+          <div class="stats"><div><b>$${peak}M</b><span>${CO}’s peak cash, in ${peakYr}</span></div><div><b>${e.year}</b><span>${e.kind === 'fired' ? 'the year the board replaced you' : 'the year the cash ran out'}</span></div><div><b>2007</b><span>${RIV} bankrupt</span></div></div>
           <p class="story">${esc(E.text)}</p>
-          ${e.kind === 'fired' ? `<h3>What happened after you left</h3><ul>${YRS.filter((y) => y > e.year && C.AFTER[y]).map((y) => `<li><b>${y}:</b> ${esc(C.AFTER[y])}</li>`).join('')}</ul><div class="actions"><button class="btn ghost" type="button" id="coda">Watch 2007 on your rival’s line</button></div>` : ''}
-          <h3>Who else lost money</h3><ul>${C.LOSERS.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>
-        <section><h3 style="margin-top:0">Every way this market can go</h3><ol class="hist">${hist}</ol>
-          <h3>Profit by year</h3><table class="profitbars"><thead><tr><th scope="col">Year</th><th scope="col">You</th><th scope="col">Rival</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+          <h3>Who else lost money</h3><ul>${C.LOSERS.map((x) => `<li>${esc(x.replace('Your rival', RIV))}</li>`).join('')}</ul>
+          <div class="actions"><button class="btn ghost" type="button" id="again">Play again</button></div></section>
+        <section><h3 style="margin-top:0">Profit by year</h3><table class="profitbars"><thead><tr><th scope="col">Year</th><th scope="col">${CO}</th><th scope="col">${RIV}</th></tr></thead><tbody>${rowsHtml}</tbody></table>
           <div class="chartbox" id="chart2"></div></section></div>`;
       priceChart($('#chart2')).drawTo(156);
-      $('#share').addEventListener('click', async () => {
-        const txt = `The Mortgage Machine: I ran a mortgage lender from 2002 and was ${e.kind === 'fired' ? 'fired' : 'bankrupt'} by ${e.year}, after my cash peaked at $${peak} million. Nobody gets past 2008. How long can you last?`;
-        const url = root.location.href.split(/[?#]/)[0];
-        try { if (root.navigator.share) { await root.navigator.share({ title: 'The Mortgage Machine', text: txt, url }); return; } } catch (err) { if (err && err.name === 'AbortError') return; }
-        try { await root.navigator.clipboard.writeText(txt + ' ' + url); $('#shareMsg').textContent = 'Copied. Paste it to a friend.'; } catch (err) { $('#shareMsg').textContent = txt + ' ' + url; }
-      });
-      $('#again').addEventListener('click', () => { vi = pickVariant(); seq = ''; $('#endBox').innerHTML = ''; $('#side').hidden = false; $('.game2').classList.remove('ended'); mach.reset({ cash: C.START_CASH }); mach.setLabel('Your company'); mach.setFamilies(6); rival.set({ cash: C.START_CASH, dark: false, closed: false }); drawYear(); $('.game2').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); });
-      if ($('#coda')) $('#coda').addEventListener('click', async () => {
-        const R = C.gameSim('LLLLLLL', vi).rows, before = R[4].rcash, after = R[5].rcash;
-        $('#coda').disabled = true; tick('2007, on your rival’s line'); mach.reset({ cash: before }); mach.setLabel('Your rival');
-        $('#g2stage').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
-        await mach.runBust({ choice: 'L', back: R[5].rback, cashBefore: before, cashAfter: after, bust: true }, tick);
-        tick('Your rival is bankrupt in 2007, as New Century was.'); $('#coda').disabled = false;
-      });
-      const res = C.judgeTask(t, { value: vi + ':' + seq }, M.h);
-      if (res.ok) { const first = !L.done; L.value = vi + ':' + seq; if (first) L.attempts = Math.max(L.attempts || 0, 1); M.markDone(s.id); $('#g2after').hidden = false; $('#nextRow').hidden = false; M.showFb($('#fb'), 'ok', '<b>Saved.</b> ' + esc(C.praise(t))); }
+      $('#endNext').addEventListener('click', () => M.go(M.nextId(s.id)));
+      $('#again').addEventListener('click', () => { seq = ''; $('#endBox').innerHTML = ''; $('#side').hidden = false; $('#rival').hidden = false; $('.game2').classList.remove('ended'); mach.reset({ cash: C.START_CASH }); mach.setLabel('Lakeview'); mach.setFamilies(6); rival.set({ cash: C.START_CASH, dark: false, closed: false }); chart.toYearEnd(2003); intro(); $('.game2').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); });
+      const res = C.judgeTask(t, { value: 'g4:' + seq }, M.h);
+      if (res.ok) { const first = !L.done; L.value = 'g4:' + seq; if (first) L.attempts = Math.max(L.attempts || 0, 1); M.markDone(s.id); $('#g2after').hidden = false; $('#nextRow').hidden = false; M.showFb($('#fb'), 'ok', '<b>Saved.</b> ' + esc(C.praise(t))); }
       M.saveState();
       if (fresh) $('#endBox').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
     }
-    // reopen a finished game on its ending; anything else starts in 2002 (with the walkthrough the first time)
-    const saved = L.value ? C.parseGame(L.value) : null, s0 = saved ? C.gameSim(saved.seq, saved.v) : null;
-    if (saved && s0.ending && s0.ending.at === saved.seq.length - 1) {
-      vi = saved.v; seq = saved.seq; const r = s0.rows[s0.rows.length - 1];
-      if (s0.ending.kind === 'bust') mach.reset({ cash: r.cash, turned: true, gate: true, dark: 6, pile: 8 }); else mach.setCash(r.cash);
-      rival.set({ cash: r.rcash == null ? -1 : r.rcash, dark: !!s0.rivalBust, closed: !!s0.rivalBust }); race(r); drawEnd(false);
-    } else { vi = pickVariant(); if (M.store.get(M.KEY + ':walked')) drawYear(); else walkthrough(); }
-    M.gameApi = { get seq() { return seq; }, get phase() { return phase; }, get variant() { return vi; }, setVariant: (v) => { vi = v; },
-      pick: (c) => { const b = $(`.ch3[data-c="${c}"]`); if (b) b.click(); }, next: () => { const b = $('#goOn'); if (b) b.click(); }, skip: () => { if (mach.skip) mach.skip(); } };
+    const saved = L.value ? C.parseGame(L.value) : null, s0 = saved && saved.seq ? C.gameSim(saved.seq) : null;
+    if (s0 && s0.ending && s0.ending.at === saved.seq.length - 1) {
+      seq = saved.seq; const r = s0.rows[s0.rows.length - 1];
+      if (s0.ending.kind === 'bust') mach.reset({ cash: r.cash, turned: true, gate: true, dark: 6, pile: 8 }); else { mach.setLabel('Crestline'); mach.reset({ cash: C.gameSim('LLLL').rows[3].rcash, turned: true, gate: true, dark: 6, pile: 8 }); $('#rival').hidden = true; }
+      race(r); drawEnd(false);
+    } else intro();
+    M.gameApi = { get seq() { return seq; }, get phase() { return phase; }, pick: (c) => { const b = $(`.ch3[data-c="${c}"]`); if (b) b.click(); }, next: () => { const b = $('#goOn'); if (b) b.click(); }, skip: () => { if (mach.skip) mach.skip(); } };
   };
+  M.reg('every game year has a speaker, an application and all three standards spelled out', () => { const bad = C.YEARS.filter((y) => { const v = VISIT[y], a = APP[y]; return !(v && PPL[v[0]] && a && a.S && a.N && a.L && a.ask); }); return !bad.length || { ok: false, detail: 'missing content for ' + bad.join(', ') }; });
   const S = () => M.S;
-  // All distinct games (played prefixes of the 2,187 plans), counted by ending. Computed once.
-  const ALL = {};
-  function allGames(vi) {
-    vi = vi || 0; if (ALL[vi]) return ALL[vi]; const seen = new Map();
-    for (let n = 0; n < 2187; n++) { let x = n, q = ''; for (let k = 0; k < 7; k++) { q += 'SNL'[x % 3]; x = Math.floor(x / 3); } const g = C.gameSim(q, vi); seen.set(q.slice(0, g.ending.at + 1), { en: g.ending, peak: Math.max(C.START_CASH, ...g.rows.map((r) => r.cash)) }); }
-    const by = {}; seen.forEach(({ en, peak }) => { const k = en.kind + en.year; by[k] = by[k] || { key: k, kind: en.kind, year: en.year, n: 0, peak: 0 }; by[k].n++; by[k].peak = Math.max(by[k].peak, peak); });
-    ALL[vi] = Object.values(by).sort((a, b) => a.year - b.year); return ALL[vi];
-  }
-  M.reg('every year has a visitor, an application with all three choices spelled out, and a portrait', () => { const bad = C.YEARS.filter((y) => { const v = VISIT[y](C.VARIANTS[0]), a = APP[y]; return !(v && WHO[v[0]] && v[1] && a && a.S && a.N && a.L && a.ask && A.portrait(v[0]).includes('<svg')); }); return !bad.length || { ok: false, detail: 'missing content for ' + bad.join(', ') }; });
   M.reg('the machine draws its belts and the investors', () => { const host = document.createElement('div'); host.style.width = '1200px'; document.body.appendChild(host); const m = Machine(host); const ok = host.querySelectorAll('path.belt').length === 3 && !!host.querySelector('#globe') && host.querySelector('#r_priv').getTotalLength() > 500; m.destroy(); host.remove(); return ok || { ok: false, detail: 'machine belts or routes missing' }; });
 })(window);

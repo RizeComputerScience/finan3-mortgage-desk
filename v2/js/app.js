@@ -63,7 +63,11 @@
         <div class="tools"><a class="tool desmos-open" id="calcBtn" href="https://www.desmos.com/scientific" target="desmos" rel="noopener">Calculator<span class="sr-only"> (Desmos, opens in a new window)</span></a>
         <button class="tool" id="sndBtn" type="button" aria-pressed="false">${SPEAKER}<span>Sound off</span></button></div></div></header>
       <main id="main" tabindex="-1"></main>
-      <footer class="foot"><p>${esc(C.story.kicker)}. Your progress is saved in this browser.<span id="codeNote"></span></p></footer>`);
+      <footer class="foot"><p>${esc(C.story.kicker)}. Your progress is saved in this browser.<span id="codeNote"></span></p>
+        <details class="resume-foot"><summary>Continue with a desk code from another computer</summary><form id="codeForm" novalidate><label for="dc">Desk code</label> <input type="text" id="dc" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345"> <button class="btn small ghost" type="submit">Continue</button><p class="err" id="startErr" role="alert"></p></form></details></footer>`);
+    $('#codeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#dc').value;
+      if (!h.validCode(v)) { $('#startErr').textContent = 'A desk code is 8 letters and numbers, like ABCD-2345. Check it against your receipt.'; $('#dc').focus(); return; }
+      startFor(v); const first = D.STEPS.find((x) => !S.log[x.id].done); go(S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt')); });
     const hv = () => document.documentElement.style.setProperty('--hdr', ($('#hdr').offsetHeight || 72) + 'px'); hv(); root.addEventListener('resize', hv);
     $('#sndBtn').addEventListener('click', () => { Snd.on = !Snd.on; if (Snd.on) { Snd.ac(); Snd.good(); } else Snd.humStop(true);
       $('#sndBtn').setAttribute('aria-pressed', String(Snd.on)); $('#sndBtn span').textContent = Snd.on ? 'Sound on' : 'Sound off'; store.set(KEY + ':sound', Snd.on); });
@@ -195,7 +199,7 @@
       const g = q('track'); if (!on) { g.innerHTML = ''; return; }
       const area = `M${TX0} ${TY} L${TX0} ${TY - TH} ` + trackPts.map((p) => `L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ') + ` L${TX1} ${TY} Z`;
       let ticks = ''; for (let y = 0; y <= 30; y += 5) { const x = TX0 + (TX1 - TX0) * y / 30; ticks += `<line x1="${x}" x2="${x}" y1="${TY}" y2="${TY + 7}" stroke="${K.muted}"/><text x="${x}" y="${TY + 24}" text-anchor="${y === 0 ? 'start' : y === 30 ? 'end' : 'middle'}" font-family="Jost" font-size="14" fill="${K.muted}">${y === 0 ? 'Year 0' : y}</text>`; }
-      g.innerHTML = `<text x="${TX0}" y="${TY - TH - 12}" font-family="Jost" font-size="14.5" fill="${K.muted}">Loan left to repay</text>
+      g.innerHTML = `<text x="${TX0}" y="${TY - TH - 12}" font-family="Jost" font-size="14.5" fill="${K.muted}">Still owed</text>
         <path d="${area}" fill="${K.ink3}" stroke="${K.muted}" stroke-width="1.5"/><path id="tPast" fill="${K.green}" opacity=".6"/><line x1="${TX0}" x2="${TX1}" y1="${TY}" y2="${TY}" stroke="${K.muted}" stroke-width="2"/>${ticks}
         <line id="tNow" y1="${TY - TH - 4}" y2="${TY + 4}" stroke="${K.gold}" stroke-width="3"/><circle id="tKnob" cy="${TY}" r="11" fill="${K.gold}" stroke="${K.ink}" stroke-width="2.5"/>
         <text id="tLbl" x="${G.dyn[0]}" y="${G.dyn[2] < 0 ? TY - TH + G.dyn[2] : TY + G.dyn[2] - 18}" text-anchor="${G.dyn[1]}" font-family="Jost" font-weight="600" font-size="15" fill="${K.onInk}"></text>`;
@@ -206,8 +210,8 @@
       const x = TX0 + (TX1 - TX0) * month / 360, now = q('tNow');
       if (now) { now.setAttribute('x1', x); now.setAttribute('x2', x); q('tKnob').setAttribute('cx', x);
         q('tPast').setAttribute('d', `M${TX0} ${TY} L${TX0} ${TY - TH} ` + trackPts.slice(0, month).map((p) => `L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ') + ` L${x} ${TY} Z`);
-        q('tLbl').textContent = `Year ${Math.ceil(month / 12)}, month ${month}: ${mm(Math.round(r.balance))} left`; }
-      labels({ fam: `Family owns ${Math.round(100 * (t.P - r.balance) / t.P)}%`, len: `Loan left ${mm(Math.round(r.balance))}` });
+        q('tLbl').textContent = `Year ${Math.ceil(month / 12)}, month ${month}: ${mm(Math.round(r.balance))} still owed`; }
+      labels({ fam: `Family owns ${Math.round(100 * (t.P - r.balance) / t.P)}%`, len: `Still owed ${mm(Math.round(r.balance))}` });
       const rg = $('#scrub'); if (rg && Number(rg.value) !== month) rg.value = month;
       if (rg) rg.setAttribute('aria-valuetext', `Year ${Math.ceil(month / 12)}, month ${month}. Interest ${mm(r.interest)}, pays down ${mm(r.principal)}, ${mm(Math.round(r.balance))} left` + (o.showTotal !== false ? `, interest so far ${mm(Math.round(r.cumInterest))}.` : '.'));
       q('hsD').textContent = `Month ${month}: of the ${mm(t.pay)} payment, ${mm(r.interest)} is interest and ${mm(r.principal)} pays down the loan. ${mm(Math.round(r.balance))} is left to repay.`;
@@ -239,21 +243,21 @@
   const show = (l) => (l.kind === 'text' ? l.num : F.SHOW[l.kind](l.num));
   const budgetFor = (t) => Math.ceil((t.pay + 150) / 100) * 100;
   const SPEECH = {
-    loan: (t) => ['couple', 'A couple at your desk', `“We found a house for ${mm(t.P)} and saved ${pc(t.d)} of the price. How much do we borrow, and how much of the house does that make yours?”`],
-    pay: (t) => ['couple', 'The same couple', `“We can spend ${mm(budgetFor(t))} a month on the house. At ${pc(t.r)}, can we afford it?”`],
-    first: (t) => ['couple', 'The same couple', `“Our first payment is ${mm(t.pay)}. How much of it actually pays off the house?”`],
-    total: () => ['couple', 'The same couple', '“If we pay every month for 30 years, how much of it all is interest?”'],
-    lockin: () => ['family', 'Another couple, years later', '“Our $320,000 loan is at 3%. New loans cost 6.5%. If we moved and borrowed the same again, how much more a month?”'],
+    loan: (t) => ['couple', 'Maya and Sam Chen, buying their first house', `“We found a house for ${mm(t.P)} and saved ${pc(t.d)} of the price for the down payment. How much do we borrow, and what is our loan-to-value ratio?”`],
+    pay: (t) => ['couple', 'Maya and Sam Chen', `“We can spend ${mm(budgetFor(t))} a month on the house. At ${pc(t.r)}, can we afford it?”`],
+    first: (t) => ['couple', 'Maya and Sam Chen', `“Our first payment is ${mm(t.pay)}. How much of it actually pays off the house?”`],
+    total: () => ['couple', 'Maya and Sam Chen', '“If we pay every month for 30 years, how much of it all is interest?”'],
+    lockin: () => ['family', 'Check the how-to page’s lock-in case', '“We borrowed $320,000 at 3%. New loans cost 6.5%. If we sold, repaid our loan and borrowed the same again, how much more would we pay each month?”'],
   };
   const REPLY = {
     loan: (t) => ['officer', 'Your loan officer', 1 - t.d > 0.8 ? `“That’s ${pc(1 - t.d)} of the value. Above 80%, Fannie Mae needs mortgage insurance on the loan before it will buy it.”` : `“${pc(1 - t.d)} of the value, at or under 80%: Fannie Mae will buy this loan as it is.”`],
-    pay: (t) => ['couple', 'The couple', `“${mm(t.pay)}. That leaves us ${mm(budgetFor(t) - t.pay)} a month. We’ll sign.”`],
-    first: (t) => ['couple', 'The couple', `“Only ${mm(t.principal)}? So most of it is the price of borrowing.”`],
-    total: (t) => ['couple', 'The couple', `“${mm(t.totalInt)} in interest, on top of the ${mm(t.L)} we borrowed.”`],
-    lockin: (t) => ['family', 'The couple', `“About ${mm(t.gap)} more, every month. We’re staying put.”`],
+    pay: (t) => ['couple', 'Maya and Sam Chen', `“${mm(t.pay)}. That leaves us ${mm(budgetFor(t) - t.pay)} a month. We’ll sign.”`],
+    first: (t) => ['couple', 'Maya and Sam Chen', `“Only ${mm(t.principal)}? So most of it is the price of borrowing.”`],
+    total: (t) => ['couple', 'Maya and Sam Chen', `“${mm(t.totalInt)} in interest, on top of the ${mm(t.L)} we borrowed.”`],
+    lockin: (t) => ['family', 'The 3% couple', `“About ${mm(t.gap)} more, every month. We’re staying put.” Owners like them are locked in.`],
   };
   // Chip positions on the wide house drawing (viewBox 760 wide), per step; tall screens and lock-in list the chips under it.
-  const CHIP_AT = { loan: { 1: [16, 168], 2: [552, 120], 3: [552, 236] }, pay: { 1: [16, 8], 2: [16, 116], 3: [16, 224] }, first: { 1: [16, 50], 2: [16, 160] }, total: { 0: [16, 6], 1: [16, 90] } };
+  const CHIP_AT = { loan: { 1: [16, 168], 2: [552, 120], 3: [552, 236] }, pay: { 1: [16, 8], 2: [16, 116], 3: [16, 224] }, first: { 1: [16, 50], 2: [16, 160] }, total: { 0: [16, 6], 1: [16, 118] } };
   const personCard = (who) => `<div class="pcard">${A.portrait(who[0], 60)}<div><p class="pwho">${esc(who[1])}</p><p class="pline">${who[2]}</p></div></div>`;
   function chipsHtml(lines, rows, s, wide, H0) {
     const at = wide ? CHIP_AT[s] : null;
@@ -267,7 +271,7 @@
     const lines = E.lines();
     return `<details class="worked" open><summary>Worked example: ${esc(E.cap.replace(/\.$/, ''))}</summary><div class="wchips">${lines.map((l) => `<div class="wchip${l.input ? '' : ' given'}"><span class="chip-l">${esc(l.label)}</span><b>${esc(show(l))}</b><span class="chip-c">${l.calc}</span></div>`).join('')}</div></details>`;
   }
-  const rateCard = (hi, tap) => `<div class="ratecard"><h3>Rate card: monthly payment for each $100,000, 30 years</h3><table><thead><tr><th scope="col">Rate</th><th scope="col">Per $100,000</th></tr></thead><tbody>${C.RATES.map((r) => `<tr${hi && hi.includes(r) ? ' class="hl"' : ''}><td>${tap ? `<button type="button" class="ratebtn" data-r="${r}">${pc(r)}</button>` : pc(r)}</td><td>${mm(C.TABLE[r])}</td></tr>`).join('')}</tbody></table>${tap ? '<p class="small">Tap your rate to copy its payment.</p>' : ''}</div>`;
+  const rateCard = (hi, tap) => `<div class="ratecard"><h3>The payment table</h3><table><thead><tr><th scope="col">Interest rate, 30-year fixed loan</th><th scope="col">Monthly payment for each $100,000 borrowed</th></tr></thead><tbody>${C.RATES.map((r) => `<tr${hi && hi.includes(r) ? ' class="hl"' : ''}><td>${tap ? `<button type="button" class="ratebtn" data-r="${r}">${pc(r)}</button>` : pc(r)}</td><td>${mm(C.TABLE[r])}</td></tr>`).join('')}</tbody></table>${tap ? '<p class="small">Tap your rate to copy its payment.</p>' : ''}</div>`;
   M.rateCard = rateCard;
 
   // One calculation step: chips on the object, check, row marks, diagnoses, help ladder, a person's reply, next.
@@ -448,7 +452,7 @@
       <div class="belt" aria-hidden="true"><span class="loan-rider" id="rider"></span></div><p class="caption" id="chCap"></p>`;
     const rowsToVal = (rows) => { const v = {}; (rows || []).forEach((r, i) => { if (r) v[String(i)] = String(r); }); return v; };
     work.innerHTML = `<div class="tray" id="tray">${C.EVENT_SHOWN.map((e, i) => `<button type="button" class="card" data-key="${i}" aria-pressed="false"><span class="grip" aria-hidden="true"></span><span>${esc(C.EVENTS[e])}</span></button>`).join('')}</div>
-      <p class="hint-line">Tap an event, then tap its bay. Or drag it there.</p>
+      <p class="hint-line big">Tap an event, then tap its bay (or drag it there). Tap a filled bay to take its event back.</p>
       <div class="actions"><button class="btn" type="button" id="chk">Check the order</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
       <div class="fb" id="fb" aria-live="polite"></div><div class="actions" id="helpRow" hidden></div><div class="fb hint" id="helpBox"></div>${nextRow(s, !L.done)}`;
     const render = (val) => {
@@ -456,7 +460,7 @@
         const k = Object.keys(val).find((x) => val[x] === String(n)), b = $('#bay' + n);
         $('#bayMk' + n).textContent = ''; b.classList.remove('good', 'wrong');
         if (k == null) { $('#bayArt' + n).innerHTML = ''; $('#bayTxt' + n).textContent = 'Drop an event here'; b.setAttribute('aria-label', `Bay ${n}, empty`); b.classList.remove('filled'); continue; }
-        const e = C.EVENT_SHOWN[Number(k)]; $('#bayArt' + n).innerHTML = EVENT_ART[e](); $('#bayTxt' + n).textContent = EVENT_SHORT[e]; b.classList.add('filled');
+        const e = C.EVENT_SHOWN[Number(k)]; $('#bayArt' + n).innerHTML = EVENT_ART[e](); $('#bayTxt' + n).innerHTML = `${esc(EVENT_SHORT[e])}<span class="undo">Tap to take it back</span>`; b.classList.add('filled');
         b.setAttribute('aria-label', `Bay ${n}: ${C.EVENTS[e]}`);
       }
     };
@@ -499,7 +503,7 @@
         <span class="pl-art">${PLAYER_ART[i]()}</span><span class="pl-name">${esc(p)}</span><span class="pl-tag" id="plTag${i}">Hang a pay tag here</span><span class="pl-mk" id="plMk${i}" aria-hidden="true"></span><span class="pl-pay" id="plPay${i}" aria-hidden="true"></span></button></div>`).join('')}</div>
       <p class="caption" id="pdCap"></p>`;
     work.innerHTML = `<div class="tray" id="tray">${C.PAYS.map(([k, txt]) => `<button type="button" class="card tagcard" data-key="${k}" aria-pressed="false"><span class="grip" aria-hidden="true"></span><span>${esc(txt)}</span></button>`).join('')}</div>
-      <p class="hint-line">Tap a pay tag, then tap its player. Or drag it there.</p>
+      <p class="hint-line big">Tap a pay tag, then tap its player (or drag it there). Tap a hung tag to take it back.</p>
       <div class="actions"><button class="btn" type="button" id="chk">Check the tags</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
       <div class="fb" id="fb" aria-live="polite"></div><div class="actions" id="helpRow" hidden></div><div class="fb hint" id="helpBox"></div>${nextRow(s, !L.done)}`;
     const toRows = (val) => C.PLAYERS.map((_, i) => Object.keys(val).find((k) => val[k] === String(i)) || '');
@@ -507,7 +511,7 @@
     const render = (val) => C.PLAYERS.forEach((p, i) => {
       const k = Object.keys(val).find((x) => val[x] === String(i)), tg = $('#plTag' + i), b = $('#pl' + i); b.classList.remove('good', 'wrong'); $('#plMk' + i).textContent = '';
       if (!k) { tg.textContent = 'Hang a pay tag here'; tg.classList.remove('hung'); b.setAttribute('aria-label', `${p}, no pay tag yet`); return; }
-      const txt = C.PAYS.find((x) => x[0] === k)[1]; tg.textContent = txt; tg.classList.add('hung'); b.setAttribute('aria-label', `${p}: ${txt}`);
+      const txt = C.PAYS.find((x) => x[0] === k)[1]; tg.innerHTML = `${esc(txt)}<span class="undo">Tap to take it back</span>`; tg.classList.add('hung'); b.setAttribute('aria-label', `${p}: ${txt}. Tap to take it back.`);
     });
     const P = placer({ tray: $('#tray'), slotEls: () => $$('.player', stage), value: rowsToVal(L.rows), slotWord: 'player', render,
       onChange: (val) => { if (!L.done) { L.rows = toRows(val); saveState(); } } });
@@ -537,44 +541,29 @@
     if (L.done) { judge(true); showFb($('#fb'), 'ok', C.praise(t, h)); payday(); }
   }
 
-  // ---------------- check 1: drag the bond's price tag (up, level, down) ----------------
+  // ---------------- check 1: the bond's price when rates rise (round 3: three large answers, one action) ----------------
   function showQ1(main, s) {
     const L = S.log[s.id], q = C.quiz[s.quiz], { stage, work } = beat(main, s);
-    const POS = ['up', 'level', 'down'], Y = { up: 40, level: 130, down: 220 };
     const cur = L.choice != null ? Object.keys(C.Q1_POS).find((k) => C.Q1_POS[k] === Number(L.choice)) : null;
-    stage.innerHTML = `<div class="q1">
-      <svg class="world" viewBox="0 0 760 330" role="img" aria-labelledby="q1T"><title id="q1T">Rates on new bonds rise; the old bond’s price tag can be dragged up, level or down</title>
-        <g transform="translate(40 30)"><text x="90" y="0" text-anchor="middle" font-family="Jost" font-weight="600" font-size="17" fill="${K.onInk}">Rates on new bonds</text>
-          <rect x="70" y="20" width="40" height="230" rx="4" fill="${K.ink2}" stroke="${K.muted}"/><rect id="rateBar" x="74" y="170" width="32" height="76" fill="${K.gold}"/>
-          <path id="rateArrow" d="M130 200 L130 60 M118 76 L130 58 L142 76" stroke="${K.gold}" stroke-width="5" fill="none" stroke-linecap="round"/><text x="150" y="134" font-family="Jost" font-weight="600" font-size="17" fill="${K.gold}">rise</text></g>
-        <g transform="translate(300 60)">${A.bond(0, 0, 3)}</g>
-        <g id="seesaw" transform="translate(380 312)" opacity="0"><polygon points="-14,0 14,0 0,-22" fill="${K.muted}"/><g id="plank"><rect x="-220" y="-30" width="440" height="8" fill="${K.onInk}"/><text x="-220" y="-40" font-family="Jost" font-size="14" fill="${K.gold}">rates</text><text x="220" y="-40" text-anchor="end" font-family="Jost" font-size="14" fill="${K.onInk}">price</text></g></g>
-      </svg>
-      <div class="pricerail" id="rail"><div class="rail-track" aria-hidden="true"></div>
-        ${POS.map((p) => `<button type="button" class="rail-stop" data-pos="${p}" style="top:${Y[p]}px">${p === 'up' ? 'Higher' : p === 'level' ? 'Same' : 'Lower'}</button>`).join('')}
-        <div class="pricetag" id="tag" role="slider" tabindex="0" aria-label="Price of the old bond" aria-valuemin="-1" aria-valuemax="1" style="top:${Y[cur || 'level']}px"><span>${cur ? 'Price' : 'Drag me'}</span></div></div></div>
-`;
-    let pos = cur || null;
-    const tag = $('#tag');
-    const setPos = (p, quiet) => { pos = p; tag.querySelector('span').textContent = 'Price'; tag.style.top = Y[p] + 'px'; tag.setAttribute('aria-valuenow', p === 'up' ? 1 : p === 'level' ? 0 : -1); tag.setAttribute('aria-valuetext', p === 'up' ? 'The price rises' : p === 'level' ? 'The price stays the same' : 'The price falls'); tag.classList.add('set'); if (!quiet) Snd.tick(); };
-    if (cur) setPos(cur, true); else { tag.setAttribute('aria-valuenow', 0); tag.setAttribute('aria-valuetext', 'Not moved yet'); }
-    $$('.rail-stop').forEach((b) => b.addEventListener('click', () => setPos(b.dataset.pos)));
-    tag.addEventListener('keydown', (e) => { const i = POS.indexOf(pos || 'level'); if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setPos(POS[Math.max(0, i - 1)]); e.preventDefault(); } if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setPos(POS[Math.min(2, i + 1)]); e.preventDefault(); } });
-    tag.addEventListener('pointerdown', (e) => { tag.setPointerCapture(e.pointerId); const rail = $('#rail').getBoundingClientRect();
-      const mv = (ev) => { const y = Math.max(20, Math.min(240, ev.clientY - rail.top)); tag.style.top = y + 'px'; };
-      const up = (ev) => { tag.removeEventListener('pointermove', mv); tag.removeEventListener('pointerup', up); const y = ev.clientY - rail.top; setPos(y < 85 ? 'up' : y > 175 ? 'down' : 'level'); };
-      tag.addEventListener('pointermove', mv); tag.addEventListener('pointerup', up); });
-    work.innerHTML = `<div class="actions"><button class="btn" type="button" id="chk">Check</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div><div class="fb" id="fb" aria-live="polite"></div>${nextRow(s, !L.done)}`;
-    const finish = () => { const ss = $('#seesaw'); ss.setAttribute('opacity', 1); const pl = $('#plank'); if (reduced()) pl.setAttribute('transform', 'rotate(14)'); else { let k = 0; const st = () => { k = Math.min(1, k + 0.04); pl.setAttribute('transform', `rotate(${14 * (1 - Math.pow(1 - k, 3))})`); if (k < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); } };
-    $('#chk').addEventListener('click', () => {
-      if (!pos) { showFb($('#fb'), 'bad', 'Drag the price tag first: higher, the same or lower.'); return; }
-      const pick = C.Q1_POS[pos], ok = D.judgeQuiz(s.quiz, pick).ok; L.attempts = (L.attempts || 0) + 1; if (ok || !L.done) L.choice = pick;
+    stage.innerHTML = `<svg class="world" viewBox="0 0 760 360" role="img" aria-labelledby="q1T"><title id="q1T">A mortgage bond pays the same fixed amount every year; rates on new bonds rise from 4% to 6%</title>
+        <g transform="translate(40 40)">${A.bond(0, 0, 3.2)}<text x="128" y="216" text-anchor="middle" font-family="Jost" font-size="18" fill="${K.onInk}">Pays the same every year</text></g>
+        <g transform="translate(400 50)"><text x="0" y="0" font-family="Jost" font-weight="600" font-size="22" fill="${K.onInk}">New bonds now pay</text>
+          <text x="0" y="56" font-family="Jost" font-weight="700" font-size="48" fill="${K.muted}">4%</text><path d="M84 40 H150 M138 28 L152 40 L138 52" stroke="${K.gold}" stroke-width="5" fill="none"/><text x="164" y="56" font-family="Jost" font-weight="700" font-size="48" fill="${K.gold}">6%</text></g>
+        <g id="seesaw" transform="translate(560 300)" opacity="0"><polygon points="-14,0 14,0 0,-22" fill="${K.muted}"/><g id="plank"><rect x="-150" y="-30" width="300" height="8" fill="${K.onInk}"/><text x="-150" y="-40" font-family="Jost" font-size="17" fill="${K.gold}">rates up</text><text x="150" y="-40" text-anchor="end" font-family="Jost" font-size="17" fill="${K.onInk}">price down</text></g></g></svg>`;
+    const OPTS = [['up', '↑', 'Its price goes up'], ['level', '=', 'Its price stays the same'], ['down', '↓', 'Its price goes down']];
+    work.innerHTML = `<div class="bigchoices" role="radiogroup" aria-label="What happens to the price of the bond the fund owns?">${OPTS.map(([k, ic, tx]) => `<button type="button" class="bigchoice" role="radio" aria-checked="${cur === k}" data-k="${k}"><span class="bc-ic" aria-hidden="true">${ic}</span><span>${tx}</span><span class="bc-mk" aria-hidden="true"></span></button>`).join('')}</div>
+      <p class="hint-line big">Tap one answer.</p><div class="fb" id="fb" aria-live="polite"></div>${nextRow(s, !L.done)}`;
+    const finish = () => { const ss = $('#seesaw'); ss.setAttribute('opacity', 1); const pl = $('#plank'); if (reduced()) pl.setAttribute('transform', 'rotate(12)'); else { let k = 0; const st = () => { k = Math.min(1, k + 0.04); pl.setAttribute('transform', `rotate(${12 * (1 - Math.pow(1 - k, 3))})`); if (k < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); } };
+    const answer = (k) => {
+      const pick = C.Q1_POS[k], ok = D.judgeQuiz(s.quiz, pick).ok; L.attempts = (L.attempts || 0) + 1; if (ok || !L.done) L.choice = pick;
+      $$('.bigchoice', work).forEach((b) => { const on = b.dataset.k === k; b.setAttribute('aria-checked', String(on)); b.classList.toggle('good', on && ok); b.classList.toggle('wrong', on && !ok); b.querySelector('.bc-mk').textContent = on ? (ok ? '✓' : '✗') : ''; });
       showFb($('#fb'), ok ? 'ok' : 'bad', esc(q.why[pick]) + (!ok && L.done ? ' Your earlier right answer is still saved.' : ''));
-      if (ok) { markDone(s.id); Snd.good(); $('#nextRow').hidden = false; finish(); }
-      $('#att').textContent = 'Checks so far: ' + L.attempts; saveState();
-    });
+      if (ok) { markDone(s.id); Snd.good(); $('#nextRow').hidden = false; finish(); } else Snd.thud();
+      saveState();
+    };
+    $$('.bigchoice', work).forEach((b) => b.addEventListener('click', () => answer(b.dataset.k)));
     wireNext(s);
-    if (L.done) { showFb($('#fb'), 'ok', esc(q.why[q.answer])); finish(); }
+    if (L.done) { $$('.bigchoice', work).forEach((b) => { if (b.dataset.k === 'down') { b.classList.add('good'); b.querySelector('.bc-mk').textContent = '✓'; } }); showFb($('#fb'), 'ok', esc(q.why[q.answer])); finish(); }
   }
 
   // ---------------- check 2: drop the missed payment on whoever loses ----------------
@@ -622,8 +611,8 @@
     stage.innerHTML = `<svg class="world" viewBox="0 0 620 300" role="img" aria-labelledby="bdT"><title id="bdT">Your board, waiting for your memo</title>
       ${[0, 1, 2, 3, 4, 5, 6].map((i) => A.seated(70 + i * 72, 92, 2, i === 3 ? K.onInk : K.muted)).join('')}<rect x="40" y="166" width="540" height="16" fill="${K.onInk}"/><rect x="70" y="182" width="10" height="70" fill="${K.onInk}"/><rect x="540" y="182" width="10" height="70" fill="${K.onInk}"/>
       ${A.at(282, 136, 1, `<rect x="0" y="0" width="56" height="28" fill="${K.sheet}" stroke="${K.ink}"/><path d="M8 9h40M8 15h34M8 21h38" stroke="${K.ink}" stroke-width="2"/>`)}</svg>
-      <p class="caption">${e ? (e.kind === 'fired' ? `Your game ended: fired in ${e.year}.` : `Your game ended: bankrupt in ${e.year}.`) : 'Finish the lender’s game first if you can; your memo is about what happened there.'}</p>`;
-    work.innerHTML = `<div class="letterhead"><div class="lh">Memo to the board <span>${esc(C.story.title)}</span></div><p class="prompt">${esc(N.prompt)}</p>
+      <p class="caption big">${e ? (e.kind === 'fired' ? `The board replaced you in ${e.year}, and Crestline went bankrupt in 2007.` : `Lakeview went bankrupt in ${e.year}.`) : 'Play the lender’s game (step 10) first: your memo is about what happened there.'}</p>`;
+    work.innerHTML = `<div class="letterhead"><div class="lh">Memo to the board <span>Lakeview Home Loans</span></div><p class="prompt">${esc(N.prompt)}</p>
       <label for="memo">${esc(N.label)}</label><textarea id="memo" aria-describedby="wc">${esc(S.memo)}</textarea>
       <p class="wc" id="wc" aria-live="polite"></p><p class="small">Any answer to the second question earns full credit if it gives a reason that names what someone was paid for or was supposed to check. Your memo prints on your receipt.</p></div>${nextRow(s, !L.done)}`;
     const ta = $('#memo'), wc = $('#wc'); let timer = null;
@@ -654,7 +643,7 @@
     g.fillStyle = K.gold; g.font = J(600, 30); g.fillText('Desk code ' + h.fmtCode(S.code), 70, 192);
     const full = done === n; g.fillStyle = full ? K.green : '#8A5A00'; g.fillRect(70, 250, W - 140, 104);
     g.fillStyle = '#FFFFFF'; g.font = J(700, 50); g.fillText('Points: ' + pts + ' / ' + D.POINTS, 100, 320);
-    g.font = J(500, 25); g.textAlign = 'right'; g.fillText(done + ' of ' + n + ' steps complete · graded on completion and the memo', W - 100, 315); g.textAlign = 'left';
+    g.font = J(500, 26); g.textAlign = 'right'; g.fillText(done + ' of ' + n + ' steps complete', W - 100, 314); g.textAlign = 'left';
     const bw = (W - 140 - (cols - 1) * 14) / cols;
     D.STEPS.forEach((s, k) => { const x = 70 + (k % cols) * (bw + 14), y = 384 + Math.floor(k / cols) * 96, l = S.log[s.id];
       g.fillStyle = l.done ? '#DDEFE6' : '#FBE5DD'; g.fillRect(x, y, bw, 80); g.fillStyle = l.done ? K.green : K.red; g.fillRect(x, y, 8, 80);
@@ -693,20 +682,13 @@
       <p class="kicker" style="color:${K.muted}">${esc(C.story.kicker)}</p>
       <div class="title-grid"><h1 class="mast" id="mast"><span>The Mortgage</span><span>Machine</span></h1>
         <div><p class="dek">${esc(C.story.dek)}</p>
-          ${lastSaved ? `<p style="margin:12px 0 0;color:${K.muted}">Welcome back. Your desk code is <b style="color:${K.onInk}">${h.fmtCode(last)}</b>.</p>` : ''}
-          <div class="actions on-ink"><button class="btn" type="button" id="goBtn">${lastSaved ? 'Continue where you left off' : 'Run the lender'}</button></div>
-          <p class="credit-line">Reach the end and download your receipt to earn the ${D.POINTS} points.</p>
-          <details class="resume"><summary>Started on another computer?</summary><form id="codeForm" novalidate><label for="dc">Your desk code</label>
-            <input type="text" id="dc" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345" aria-describedby="dcHelp startErr">
-            <p class="small" id="dcHelp" style="color:${K.muted}">It is at the foot of every page of the desk and on your receipt.</p><p class="err" id="startErr" role="alert"></p>
-            <div class="actions on-ink"><button class="btn ghost" type="submit">Continue with this code</button></div></form></details></div></div>
-      <div id="heroMachine" style="margin-top:22px"></div>
-      </div></section>`;
+          <p class="credit-line big">${n} steps. Finish them all and download your receipt to earn the ${D.POINTS} points. A wrong answer never costs points.</p>
+          ${lastSaved ? `<p style="margin:10px 0 0;color:${K.muted}">Welcome back. Your desk code is <b style="color:${K.onInk}">${h.fmtCode(last)}</b>.</p>` : ''}
+          <div class="actions on-ink"><button class="btn" type="button" id="goBtn">${lastSaved ? 'Continue where you left off' : 'Start'}</button></div></div></div>
+      <div id="heroMachine" style="margin-top:22px"></div></div></section>`;
     if (M.heroMachine) M.heroMachine($('#heroMachine'));
     $('#goBtn').addEventListener('click', () => { startFor(lastSaved ? last : h.newCode()); const first = D.STEPS.find((s) => !S.log[s.id].done); go(lastSaved && S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt')); });
-    $('#codeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#dc').value;
-      if (!h.validCode(v)) { $('#startErr').textContent = 'A desk code is 8 letters and numbers, like ABCD-2345. Check it against your receipt.'; $('#dc').focus(); return; }
-      startFor(v); const first = D.STEPS.find((s) => !S.log[s.id].done); go(S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt')); });
+
   }
   M.showStart = showStart;
 
@@ -717,7 +699,7 @@
   reg('each task accepts its own answer and rejects a wrong one', () => { for (const t of D.buildTasks('SELFCHEK')) { if (!C.judgeTask(t, C.selfAnswer(t, h), h).ok) return { ok: false, detail: t.id + ' rejects its own answer' }; if (C.judgeTask(t, C.selfWrong(t, h), h).ok) return { ok: false, detail: t.id + ' accepts a wrong answer' }; } return true; });
   reg('both gesture checks grade only the right gesture', () => { const q1 = Object.keys(C.Q1_POS).filter((k) => D.judgeQuiz(0, C.Q1_POS[k]).ok), q2 = Object.keys(C.Q2_DROP).filter((k) => D.judgeQuiz(1, C.Q2_DROP[k]).ok); return (q1.join() === 'down' && q2.join() === 'fund') || { ok: false, detail: `price tag passes ${q1}, drop passes ${q2}` }; });
   reg('the 30-year pile ends at the step 5 answer', () => { const t = D.buildTasks('SELFCHEK').find((x) => x.id === 'total'), s = C.schedule(t.L, t.r, t.pay); return Math.abs(s[359].cumInterest - t.totalInt) < 1 && s[359].balance < 1 && s[179].balance > t.L / 2 || { ok: false, detail: `pile ${s[359].cumInterest} vs ${t.totalInt}` }; });
-  reg('the game has no winning path: all loose is bankrupt in 2007, strict twice is fired in 2003', () => { const a = C.gameSim('LLLLLLL').ending, b = C.gameSim('SS').ending; return (a.kind === 'bust' && a.year === 2007 && b.kind === 'fired' && b.year === 2003) || { ok: false, detail: JSON.stringify([a, b]) }; });
+  reg('the game has no winning path: all loose is bankrupt in 2007, strict twice is replaced in 2005, the rival is bankrupt in 2007', () => { const a = C.gameSim('LLLL'), b = C.gameSim('SS').ending; return (a.ending.kind === 'bust' && a.ending.year === 2007 && a.rivalBust === 2007 && b.kind === 'fired' && b.year === 2005) || { ok: false, detail: JSON.stringify([a.ending, b]) }; });
   reg('the house-price series is loaded', () => (root.HPI && root.HPI.values.length === 156 && root.HPI.values[0] === 100) || { ok: false, detail: 'HPI missing or wrong length' });
   reg('a page view rendered', () => ($('#main').textContent.trim().length > 150 && $$('#main svg, #main img').length > 0) || { ok: false, detail: 'main is empty or has no drawing' });
   reg('receipt PNG round-trips its payload', async () => {

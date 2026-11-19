@@ -44,7 +44,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:14px}
 <script>window.DESK_V1 = window.DESK; window.DESK = window.DESK_V2;</script>
 <script>
 (function(){
-const DESKS={1:DeskEngine.make(window.DESK_V1),2:DeskEngine.make(window.DESK_V2)}; const Desk=DESKS[2]; /* version 1 receipts are checked with version 1 rules (rule 16) */ document.getElementById('vt').textContent='Check '+DESK.story.title+' receipts'; document.title=document.getElementById('vt').textContent;
+const DESKS={1:DeskEngine.make(window.DESK_V1),3:DeskEngine.make(window.DESK_V2)}; const Desk=DESKS[3]; /* version 1 receipts are checked with version 1 rules (rule 16) */ document.getElementById('vt').textContent='Check '+DESK.story.title+' receipts'; document.title=document.getElementById('vt').textContent;
 const out=document.getElementById('out');
 const rows=[];
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
