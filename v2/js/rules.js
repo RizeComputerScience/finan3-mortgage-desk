@@ -68,7 +68,7 @@
   // The two endings. Each explains itself in three sentences and names who was paid for what (tests assert both).
   const ENDINGS = {
     fired: (y) => ({ title: `Fired in ${y}`,
-      text: `You were right about the loans, and the board fired you in ${y} for falling behind your rival two years running. Your rival out-earned you because Wall Street bought every loose loan it made, and the bill for bad loans would not arrive until 2007. The board rewarded this year’s profit, and nobody in the chain was paid for checking loans. Some real lenders kept their standards and survived the bust, but many boards made the same choice yours did.` }),
+      text: `You were right about the loans, and the board replaced you in ${y} for falling behind your rival two years running. Your rival out-earned you because Wall Street bought every loose loan it made, and the bill for bad loans would not arrive until 2007. The board rewarded this year’s profit, and nobody in the chain was paid for checking loans. Some real lenders kept their standards and survived the bust, but many boards made the same choice yours did.` }),
     bust: (y) => ({ title: `Bankrupt in ${y}`,
       text: `You kept pace with your rival, because every loose loan paid you a fee the day it closed and was sold soon after. When house prices fell, Wall Street stopped buying and sent the bad loans back for you to pay for, and your cash ran out in ${y}. You were paid for making loans, and nobody in the chain was paid for checking them.` }),
   };

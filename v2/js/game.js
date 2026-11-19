@@ -248,7 +248,7 @@
   const PHOTOS = root.YEAR_PHOTOS || {};
 
   // ---------------- title screen machine ----------------
-  M.heroMachine = (host) => { const m = Machine(host, { cash: 60 }); m.setFamilies(9); m.idle(true); M.onLeave(() => m.destroy()); return m; };
+  M.heroMachine = (host) => { const m = Machine(host, { cash: 20 }); m.setFamilies(9); m.idle(true); M.onLeave(() => m.destroy()); return m; };
 
   // ---------------- the lender's game: four years, named people (round 3) ----------------
   // The people and companies are invented; every fact a line states is in FACTS.md. Each party gets a reason; the memo
