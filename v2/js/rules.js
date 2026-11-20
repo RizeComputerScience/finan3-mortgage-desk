@@ -157,7 +157,7 @@
   const fix = (x, dp) => String(+Number(x).toFixed(dp == null ? 2 : dp));
   const pc = (x) => fix(x * 100, 2) + '%';
   const mm = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? H().money(x) : H().money(x, 2));
-  const SHOW = { pct: pc, money: mm, num: (v) => fix(v, 2), text: (v) => String(v) };
+  const SHOW = { pct: pc, money: mm, num: (v) => fix(v, 3), text: (v) => String(v) };   // 2026-11-19: 3.325, not 3.33 (the payment uses 3.325)
   // A percent typed as 90%, 90 or 0.9 all mean 90%. Every percent answer on this desk is at least 1%.
   const pctIn = (h, s) => { const v = h.parseMoney(s); if (!isFinite(v)) return v; return (!/%/.test(String(s)) && Math.abs(v) >= 1) ? v / 100 : v; };
   const PARSE = { pct: pctIn, money: (h, s) => h.parseMoney(s), num: (h, s) => h.parseMoney(s) };
@@ -177,7 +177,7 @@
       { label: 'Loan', calc: 'from the last step', num: mm(L), kind: 'text' },
       { label: 'Loan in $100,000s', calc: faded ? `${mm(L)} ÷ $100,000` : 'loan ÷ $100,000', num: L / 100000, kind: 'num', input: true },
       { label: `Payment per $100,000 at ${pc(r)}`, calc: 'read it from the table', num: TABLE[r], kind: 'money', input: true },
-      { label: 'Monthly payment', calc: faded ? `${fix(L / 100000)} × payment per $100,000` : 'loan in $100,000s × payment per $100,000', num: r2(L / 100000 * TABLE[r]), kind: 'money', input: true }],
+      { label: 'Monthly payment', calc: faded ? `${fix(L / 100000, 3)} × payment per $100,000` : 'loan in $100,000s × payment per $100,000', num: r2(L / 100000 * TABLE[r]), kind: 'money', input: true }],
     first: (L, r, pay, faded) => [
       { label: 'Monthly payment', calc: 'from the last step', num: mm(pay), kind: 'text' },
       { label: 'Interest this month', calc: faded ? `${mm(L)} × ${pc(r)} ÷ 12` : 'loan × yearly rate ÷ 12', num: r2(L * r / 12), kind: 'money', input: true },
@@ -219,7 +219,7 @@
     if (t.id === 'loan' && l.kind === 'pct') D.push([t.d, 'downshare', 'That is the down payment’s share. Loan-to-value is the loan’s share of the price: loan ÷ price.'], [t.P / t.L, 'flip', 'Divide the loan by the price, not the price by the loan.']);
     if (t.id === 'pay' && l.kind === 'num') D.push([t.L / 1000, 'thou', `That is the loan in thousands. Divide by $100,000: ${mm(t.L)} ÷ 100,000.`], [t.L / 10000, 'tenthou', `Divide by 100,000, not 10,000: ${mm(t.L)} ÷ 100,000.`]);
     if (t.id === 'pay' && l.label.startsWith('Payment per')) RATES.forEach((r) => { if (r !== t.r) D.push([TABLE[r], 'row', `That is the payment at ${pc(r)}. Read the row for ${pc(t.r)}.`]); });
-    if (t.id === 'pay' && l.label === 'Monthly payment') { D.push([t.per, 'per', `That is the payment on $100,000. Multiply it by the loan in $100,000s, ${fix(t.hund)}.`], [r2(t.L * t.r / 12), 'interest', 'That is one month’s interest only. Use the table.']);
+    if (t.id === 'pay' && l.label === 'Monthly payment') { D.push([t.per, 'per', `That is the payment on $100,000. Multiply it by the loan in $100,000s, ${fix(t.hund, 3)}.`], [r2(t.L * t.r / 12), 'interest', 'That is one month’s interest only. Use the table.']);
       RATES.forEach((r) => { if (r !== t.r) D.push([r2(t.hund * TABLE[r]), 'rowpay', `That uses the payment at ${pc(r)}. Use the row for ${pc(t.r)}.`]); }); }
     if (t.id === 'first' && l.label === 'Interest this month') D.push([r2(t.L * t.r), 'year', `That is a whole year of interest. Divide by 12 for one month: ${mm(t.L)} × ${pc(t.r)} ÷ 12.`], [r2(t.L * t.r / 100 / 12), 'pctdec', `Write ${pc(t.r)} as ${fix(t.r, 3)}, then multiply: ${mm(t.L)} × ${fix(t.r, 3)} ÷ 12.`], [t.pay, 'pay', 'That is the whole payment. Interest is only part of it: loan × yearly rate ÷ 12.']);
     if (t.id === 'first' && l.label === 'Pays down the loan') D.push([t.interest, 'int', 'That is the interest. The rest of the payment pays down the loan: payment − interest.'], [r2(t.pay + t.interest), 'plus', 'Subtract the interest from the payment, don’t add it.']);

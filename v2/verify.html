@@ -28,8 +28,8 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:14px}
 <body>
 <header><div><h1 id="vt">Check desk receipts</h1></div></header>
 <main>
-  <p>This page is for instructors. The desk is graded on completion: the points printed in the colored box on each receipt are the grade, and you can enter them as shown. Use this page to spot-check. Add one or more receipt files (PNG) that students uploaded; for each one, the page rebuilds that student's numbers from the desk code on the receipt and re-checks every step from scratch, without trusting the image. Receipts carry no name or email: Learn shows who uploaded each file. Two students uploading the same desk code means one copied the other's file.</p>
-  <p class="note"><b>Points (the assignment rubric):</b> full points for every step verified, half for at least half the steps, 0 for fewer. Nothing leaves your computer; the files are read in this browser only.</p>
+  <p>This page is for instructors. A receipt confirms which of the eleven steps the student completed; it does not grade the memo, so the points printed on it are not the grade. Read the memo (open <b>Student's note</b> in the table below, or read it on the receipt) against the assignment rubric: all eleven steps and a memo that places blame with a reason earn 60; all eleven steps with a memo that gives no reason for its blame earn 30, as do six to ten steps; fewer than six earn 0. Use this page to spot-check. Add one or more receipt files (PNG) that students uploaded; for each one, the page rebuilds that student's numbers from the desk code on the receipt and re-checks every step from scratch, without trusting the image. Receipts carry no name or email: Learn shows who uploaded each file. Two students uploading the same desk code means one copied the other's file.</p>
+  <p class="note"><b>Points for the steps:</b> 60 for all eleven steps verified, 30 for six to ten, 0 for fewer. This counts the steps only; the memo can lower 60 to 30. Nothing leaves your computer; the files are read in this browser only.</p>
   <div class="drop" id="drop">
     <p><label for="files"><b>Choose receipt files</b></label> or drop them here.</p>
     <input type="file" id="files" accept="image/png" multiple>
@@ -63,7 +63,7 @@ async function handle(files){
 function render(){
   const seen={};rows.forEach(r=>{if(r.p&&r.p.code)seen[r.p.code]=(seen[r.p.code]||0)+1;});
   const dup=r=>seen[r.p.code]>1?' <span class="bad">(same code as another file)</span>':'';
-  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Desk code</th><th scope="col">Verified steps</th><th scope="col">Points</th><th scope="col">Checks</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Desk code</th><th scope="col">Verified steps</th><th scope="col">Points for the steps</th><th scope="col">Checks</th></tr></thead><tbody>';
   for(const r of rows){
     if(r.error){h+=`<tr><td>${esc(r.file)}</td><td colspan="4" class="bad">${esc(r.error)}</td></tr>`;continue;}
     const pts=r.v.points;

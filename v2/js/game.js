@@ -59,7 +59,7 @@
         ${A.globe(L.globe.x, L.globe.y, L.globe.r, 'globe')}
         <rect id="gate" x="${L.gate.x}" y="${L.gate.y}" width="${L.gate.w}" height="${L.gate.h}" fill="${K.red}" stroke="${K.onInk}" stroke-width="1.5" transform="rotate(${L.gate.rot} ${L.gate.x} ${L.gate.y}) translate(0 -60)" opacity="0"/>
         ${A.office(o.x, o.y, o.w, o.h, esc(state.label), 'off')}
-        <g id="pile"></g><g id="risk"></g><text id="riskLbl" x="${L.risk.x + (L.portrait ? 30 : 46)}" y="${L.risk.y + (L.portrait ? 16 : 22)}" text-anchor="middle" font-family="Jost" font-size="${L.portrait ? 11 : 13.5}" fill="${K.red}"></text><g id="cash"></g><text id="cashLbl" x="${L.cash.x - (L.portrait ? 2 : 4)}" y="${L.cash.base + (L.portrait ? 16 : 20)}" text-anchor="start" font-family="Jost" font-weight="600" font-size="${L.portrait ? 12 : 15}" fill="${K.gold}"></text>
+        <g id="pile"></g><g id="risk"></g><text id="riskLbl" x="${L.risk.x + (L.portrait ? 30 : 46)}" y="${L.risk.y + (L.portrait ? 16 : 22)}" text-anchor="middle" font-family="Jost" font-size="${L.portrait ? 11 : 13.5}" fill="${K.redText}"></text><g id="cash"></g><text id="cashLbl" x="${L.cash.x - (L.portrait ? 2 : 4)}" y="${L.cash.base + (L.portrait ? 16 : 20)}" text-anchor="start" font-family="Jost" font-weight="600" font-size="${L.portrait ? 12 : 15}" fill="${K.gold}"></text>
         ${L.labels.map((l) => `<text x="${l.x}" y="${l.y}" text-anchor="${l.a}" font-family="Jost" font-weight="${l.b ? 600 : 400}" font-size="${l.s || (L.portrait ? 16 : 20)}" fill="${l.b ? K.onInk : K.muted}">${esc(l.t)}</text>`).join('')}
         <g id="sprites"></g>
         ${['main', 'gov', 'priv', 'money', 'back'].map((k) => `<path id="r_${k}" d="" fill="none" stroke="none"/>`).join('')}</svg>`;
@@ -80,7 +80,7 @@
       const n = Math.max(0, Math.round(cash / 10)), c = Lt.cash, step = Lt.portrait ? 6 : 8.5; let g = '';
       for (let i = 0; i < n; i++) { const col = Math.floor(i / 12), lvl = i % 12; g += A.coinEdge(c.x + c.w / 2 + col * (c.w + 4), c.base - 8 - lvl * step, c.w); }
       q('cash').innerHTML = g; q('cashLbl').textContent = cash < 0 ? `−$${Math.abs(Math.round(cash))}M` : `$${Math.round(cash)}M cash`;
-      q('cashLbl').setAttribute('fill', cash < 0 ? K.red : K.gold);
+      q('cashLbl').setAttribute('fill', cash < 0 ? K.redText : K.gold);
     }
     function paintPile() { const p = Lt.pileAt; let g = ''; for (let i = 0; i < state.pile; i++) g += A.at(p.x + (i % 5) * (Lt.portrait ? 9 : 12), p.y - 30 - Math.floor(i / 5) * (Lt.portrait ? 8 : 11), Lt.portrait ? 0.5 : 0.7, A.paper('L', { back: false }), ` transform-origin="0 0"`); q('pile').innerHTML = g; }
     // Loose loans you have sold pile up at the investors' end: the thing that can come back.
@@ -208,7 +208,7 @@
         <text id="rvCash" x="${(ox + ow + bx) / 2}" y="${Hh - 6}" text-anchor="middle" font-family="Jost" font-weight="600" font-size="${port ? 12 : 14}" fill="${K.gold}"></text><g id="rvSp"></g></svg>`;
       svg = host.querySelector('svg'); pts = [ox + ow, bx]; paint();
     }
-    function paint() { const c = svg.querySelector('#rvCash'), out = state.closed || state.cash < 0; c.textContent = out ? 'Bankrupt' : `$${state.cash}M cash`; c.setAttribute('fill', out ? K.red : K.gold);
+    function paint() { const c = svg.querySelector('#rvCash'), out = state.closed || state.cash < 0; c.textContent = out ? 'Bankrupt' : `$${state.cash}M cash`; c.setAttribute('fill', out ? K.redText : K.gold);
       for (let i = 0; i < 6; i++) { const w = svg.querySelector('#rvw' + i); if (w) w.setAttribute('fill', state.dark ? K.ink : K.gold); } }
     function fly(back) {
       const g = document.createElementNS(NS, 'g'); g.innerHTML = A.paper('L', back ? { back: true } : {}); svg.querySelector('#rvSp').appendChild(g);

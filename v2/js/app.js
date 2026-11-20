@@ -386,8 +386,8 @@
         svg.querySelector('#lkLa').textContent = `${mm(t.lo)} a month`; svg.querySelector('#lkLb').textContent = `${mm(t.hi)} a month`;
         svg.querySelector('#lkGap').innerHTML = `<text x="432" y="330" font-family="Jost" font-weight="600" font-size="18" fill="${K.gold}">+${mm(t.gap)}</text><text x="432" y="350" font-family="Jost" font-size="15" fill="${K.muted}">every month</text>`;
       } else {
-        svg.querySelector('#lkA').innerHTML = `<text x="120" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.line}">?</text>`;
-        svg.querySelector('#lkB').innerHTML = `<text x="380" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.line}">?</text>`;
+        svg.querySelector('#lkA').innerHTML = `<text x="120" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.muted}">?</text>`;
+        svg.querySelector('#lkB').innerHTML = `<text x="380" y="350" text-anchor="middle" font-family="Jost" font-weight="700" font-size="44" fill="${K.muted}">?</text>`;
       }
     };
     paint(L.done);
@@ -654,7 +654,7 @@
     g.font = NR(23); (S.memo.trim() ? wrapLines(g, S.memo, W - 140, 9) : ['(no memo yet)']).forEach((ln, i) => g.fillText(ln, 70, ny + 52 + i * 31));
     g.fillStyle = '#4F5D70'; g.font = J(400, 20); g.fillText('Issued ' + new Date(payload.issued).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }), 70, Hh - 140);
     g.fillStyle = K.ink; g.font = 'bold 27px ui-monospace, Menlo, monospace'; g.fillText('Verification code  ' + D.shortCode(payload.sum), 70, Hh - 100);
-    g.fillStyle = '#4F5D70'; g.font = J(400, 19); g.fillText('Instructors: enter the points shown above. To spot-check, open ' + C.verifyUrl.replace('https://', ''), 70, Hh - 60);
+    g.fillStyle = '#4F5D70'; g.font = J(400, 19); g.fillText('Instructors: these points count the steps. Read the memo against the rubric before you enter a grade.', 70, Hh - 66); g.fillText('To spot-check, open ' + C.verifyUrl.replace('https://', ''), 70, Hh - 38);   // 2026-11-19: the points are not the grade until the memo is read
     const blob = await new Promise((res) => cv.toBlob(res, 'image/png')); const bytes = new Uint8Array(await blob.arrayBuffer());
     return { blob: new Blob([D.addTextChunk(bytes, D.encodeReceipt(payload))], { type: 'image/png' }), url: cv.toDataURL('image/png'), payload, pts, done };
   }

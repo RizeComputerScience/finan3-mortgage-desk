@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
   const K = { ink: '#1B2A41', ink2: '#26385A', ink3: '#34496E', line: '#4A5F83', paper: '#EDF0EE', sheet: '#FFFFFF', onInk: '#F3F5F2', muted: '#AFBBCB',
-    green: '#2E8B6A', gold: '#E9A825', goldDeep: '#B97F0B', blue: '#4C7FCC', blue2: '#9DBDEB', red: '#E4572E', redDeep: '#B03515' };
+    green: '#2E8B6A', gold: '#E9A825', goldDeep: '#B97F0B', blue: '#4C7FCC', blue2: '#9DBDEB', red: '#E4572E', redDeep: '#B03515', redText: '#FF8A6B' };   // redText: red words on the ink stage (2026-11-19; #E4572E was 3.2:1 there)
   const at = (x, y, s, inner, extra) => `<g transform="translate(${x} ${y})${s && s !== 1 ? ` scale(${s})` : ''}"${extra || ''}>${inner}</g>`;
 
   // A person, 20 wide and 50 tall at scale 1 (Arntz's figure: round head, square shoulders, no face).
